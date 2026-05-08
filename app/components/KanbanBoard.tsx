@@ -193,35 +193,87 @@ export default function KanbanBoard() {
   };
 
 
-  // --- LOGIKA TAMBAH TUGAS (CREATE) ---
+  // --- LOGIKA TAMBAH/EDIT TUGAS (CREATE/UPDATE) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/tasks', {
-      method: 'POST',
-      body: JSON.stringify(formData),
-    });
-    const newTask = await res.json();
+    
+    try {
+      let response;
+      let responseData;
 
- const taskId = `task-${newTask.id_task}`;
+      if (editingTask) {
+        // UPDATE: Gunakan PATCH untuk edit task
+        response = await fetch('/api/tasks', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id_task: editingTask.dbId,
+            ...formData
+          }),
+        });
+        responseData = await response.json();
 
-    setData({
-      ...data,
-      tasks: {
-        ...data.tasks,
-        [taskId]: {
-          id: taskId,
-          dbId: newTask.id_task,
-          content: newTask.deskripsi,
-          kategori: newTask.kategori.nama_kategori,
-          warnaKategori: newTask.kategori.kode_warna
-        }
-      },
-      columns: {
-        ...data.columns,
-        "TODO": { ...data.columns["TODO"], taskIds: [...data.columns["TODO"].taskIds, taskId] }
+        // Update task di state
+        const taskId = editingTask.id;
+        setData({
+          ...data,
+          tasks: {
+            ...data.tasks,
+            [taskId]: {
+              id: taskId,
+              dbId: responseData.id_task,
+              judul_task: responseData.judul_task,
+              content: responseData.deskripsi,
+              kategori: responseData.kategori.nama_kategori,
+              warnaKategori: responseData.kategori.kode_warna,
+              id_user: responseData.id_user,
+              id_kategori: responseData.id_kategori,
+              deadline: responseData.deadline
+            }
+          }
+        });
+      } else {
+        // CREATE: Gunakan POST untuk task baru
+        response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+        responseData = await response.json();
+
+        const taskId = `task-${responseData.id_task}`;
+
+        setData({
+          ...data,
+          tasks: {
+            ...data.tasks,
+            [taskId]: {
+              id: taskId,
+              dbId: responseData.id_task,
+              judul_task: responseData.judul_task,
+              content: responseData.deskripsi,
+              kategori: responseData.kategori.nama_kategori,
+              warnaKategori: responseData.kategori.kode_warna,
+              id_user: responseData.id_user,
+              id_kategori: responseData.id_kategori,
+              deadline: responseData.deadline
+            }
+          },
+          columns: {
+            ...data.columns,
+            "TODO": { ...data.columns["TODO"], taskIds: [...data.columns["TODO"].taskIds, taskId] }
+          }
+        });
       }
-    });
-    setIsModalOpen(false);
+
+      // Reset form dan tutup modal
+      setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
+      setEditingTask(null);
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Terjadi kesalahan:", error);
+      alert("Gagal menyimpan tugas. Coba lagi!");
+    }
   };
 
   if (isLoading) return <div className="p-8 text-center text-black flex items-center justify-center min-h-screen">Memuat data dari Neon...</div>;
@@ -384,6 +436,8 @@ export default function KanbanBoard() {
                 <button 
                   type="button" 
                   onClick={() => {
+                    setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
+                    setEditingTask(null);
                     setIsModalOpen(false);
                     setEditingTask(null);
                   }} 
