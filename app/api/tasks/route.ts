@@ -125,3 +125,27 @@ export async function DELETE(request: Request) {
     );
   }
 }
+
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id_task, judul_task, deskripsi, id_user, id_kategori, deadline } = body;
+
+    const updatedTask = await prisma.tb_tasks.update({
+      where: { id_task: Number(id_task) },
+      data: {
+        judul_task,
+        deskripsi,
+        id_user: Number(id_user),
+        id_kategori: Number(id_kategori),
+        deadline: new Date(deadline),
+      },
+      include: { kategori: true, user: true }
+    });
+
+    return NextResponse.json(updatedTask);
+  } catch (error) {
+    return NextResponse.json({ error: "Gagal memperbarui rincian tugas" }, { status: 500 });
+  }
+}
