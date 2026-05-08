@@ -8,6 +8,10 @@ type Task = {
   id: string;
   dbId: number;
   content: string;
+  judul_task: string;  
+  id_user: number;    
+  id_kategori: number;
+  deadline: string;    
   kategori: string;
   warnaKategori: string;
 };
@@ -33,6 +37,7 @@ export default function KanbanBoard() {
   const [data, setData] = useState<BoardData>(initialBoardData);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<any | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [formData, setFormData] = useState({
@@ -67,11 +72,17 @@ export default function KanbanBoard() {
             id: taskId,
             dbId: task.id_task,
             content: task.deskripsi || "Tanpa Deskripsi",
+            judul_task: task.judul_task || "",    
+            id_user: task.id_user || "",          
+            id_kategori: task.id_kategori || "",  
+            deadline: task.deadline || "",      
             kategori: task.kategori?.nama_kategori || "Umum",
             warnaKategori: task.kategori?.kode_warna || "#ccc"
           };
-          if (newData.columns[task.status]) {
-            newData.columns[task.status].taskIds.push(taskId);
+
+          const status = task.status || "TODO";
+          if (newData.columns[status]) {
+            newData.columns[status].taskIds.push(taskId);
           }
         });
 
@@ -85,6 +96,25 @@ export default function KanbanBoard() {
 
     fetchData();
   }, []);
+    const handleEditClick = (task: any) => {
+
+    // 1. Set task yang sedang diedit
+    setEditingTask(task);
+    // 2. Format tanggal agar sesuai dengan input type="date"
+    const formattedDate = task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : "";
+  
+    // 3. Isi form dengan data lama
+    setFormData({
+      judul_task: task.judul_task || "",
+      deskripsi: task.content || "",
+      id_user: task.id_user ? task.id_user.toString() : "",
+      id_kategori: task.id_kategori ? task.id_kategori.toString() : "",
+      deadline: formattedDate
+    });
+
+    // 4. Buka modal
+    setIsModalOpen(true);
+  };
 
   // --- LOGIKA DRAG AND DROP (UPDATE STATUS) ---
   const onDragEnd = async (result: DropResult) => {
@@ -140,15 +170,21 @@ export default function KanbanBoard() {
 
       // Hapus data dari state UI agar kartu langsung hilang tanpa refresh
       const newData = { ...data };
-      
+
+     
+
       // Cari kolom yang berisi task tersebut dan hapus ID-nya dari array
       for (const colId of newData.columnOrder) {
         newData.columns[colId].taskIds = newData.columns[colId].taskIds.filter(id => id !== taskId);
       }
-      
+
+     
+
       // Hapus detail task dari object tasks
       delete newData.tasks[taskId];
-      
+
+     
+
       setData(newData);
     } catch (error) {
       console.error("Terjadi kesalahan:", error);
@@ -166,7 +202,8 @@ export default function KanbanBoard() {
     });
     const newTask = await res.json();
 
-    const taskId = `task-${newTask.id_task}`;
+ const taskId = `task-${newTask.id_task}`;
+
     setData({
       ...data,
       tasks: {
@@ -187,26 +224,30 @@ export default function KanbanBoard() {
     setIsModalOpen(false);
   };
 
-  if (isLoading) return <div className="p-8 text-center text-black">Memuat data dari Neon...</div>;
+  if (isLoading) return <div className="p-8 text-center text-black flex items-center justify-center min-h-screen">Memuat data dari Neon...</div>;
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       <button 
-        onClick={() => setIsModalOpen(true)}
-        className="mb-6 bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-700 transition"
+        onClick={() => {
+          setEditingTask(null);
+          setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
+          setIsModalOpen(true);
+        }}
+        className="mb-6 bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow transition-all font-medium"
       >
         + Tambah Tugas Baru
       </button>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4">
+        <div className="flex gap-6">
           {data.columnOrder.map((columnId) => {
             const column = data.columns[columnId];
             const tasks = column.taskIds.map((taskId) => data.tasks[taskId]);
 
             return (
-              <div key={column.id} className="flex flex-col bg-gray-200 rounded-xl w-1/3 p-4 min-h-[500px]">
-                <h2 className="font-bold text-gray-700 mb-4 px-2">{column.title}</h2>
+              <div key={column.id} className="flex flex-col bg-gray-200/80 rounded-xl w-1/3 p-4 min-h-[500px]">
+                <h2 className="font-bold text-gray-700 mb-4 px-2">{column.title} <span className="ml-2 text-sm bg-gray-300 px-2 py-0.5 rounded-full">{tasks.length}</span></h2>
                 <Droppable droppableId={column.id}>
                   {(provided) => (
                     <div ref={provided.innerRef} {...provided.droppableProps} className="flex-grow">
@@ -217,24 +258,28 @@ export default function KanbanBoard() {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className="bg-white p-4 mb-3 rounded-lg shadow-sm border border-gray-300 flex flex-col gap-2"
+                              onClick={() => handleEditClick(task)}
+                              className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all bg-white p-4 mb-3 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-2"
                             >
-                              {/* Kode Baru */}
-                                <div className="flex justify-between items-start mb-1">
+                              <div className="flex justify-between items-start mb-1">
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded w-fit text-white uppercase" style={{ backgroundColor: task.warnaKategori }}>
-                                    {task.kategori}
+                                  {task.kategori}
                                 </span>
                                 <button 
-                                    onClick={() => handleDeleteTask(task.id, task.dbId)}
-                                    className="text-gray-400 hover:text-red-500 transition-colors"
-                                    title="Hapus Tugas"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    handleDeleteTask(task.id, task.dbId);
+                                  }}
+                                  className="text-gray-400 hover:text-red-500 transition-colors z-10 p-1"
+                                  title="Hapus Tugas"
                                 >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
+                                  </svg>
                                 </button>
-                                </div>
-                                <p className="text-sm text-gray-800">{task.content}</p>
+                              </div>
+                              <h4 className="font-semibold text-gray-900">{task.judul_task || task.content}</h4>
+                              <p className="text-sm text-gray-600 line-clamp-2">{task.content}</p>
                             </div>
                           )}
                         </Draggable>
@@ -249,26 +294,109 @@ export default function KanbanBoard() {
         </div>
       </DragDropContext>
 
-      {/* Modal Form Tambah Tugas */}
+      {/* Modal Form Tambah & Edit Tugas */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
-            <h3 className="text-xl font-bold mb-6 text-gray-800">Buat Tugas Baru</h3>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <input type="text" placeholder="Judul Tugas" required className="border p-3 rounded-xl text-black focus:ring-2 focus:ring-blue-500 outline-none" onChange={(e) => setFormData({...formData, judul_task: e.target.value})} />
-              <textarea placeholder="Deskripsi Tugas" className="border p-3 rounded-xl text-black focus:ring-2 focus:ring-blue-500 outline-none h-24" onChange={(e) => setFormData({...formData, deskripsi: e.target.value})} />
-              <select required className="border p-3 rounded-xl text-black outline-none" onChange={(e) => setFormData({...formData, id_user: e.target.value})}>
-                <option value="">Pilih Penanggung Jawab</option>
-                {users.map(u => <option key={u.id_user} value={u.id_user}>{u.nama_lengkap}</option>)}
-              </select>
-              <select required className="border p-3 rounded-xl text-black outline-none" onChange={(e) => setFormData({...formData, id_kategori: e.target.value})}>
-                <option value="">Pilih Kategori</option>
-                {categories.map(c => <option key={c.id_kategori} value={c.id_kategori}>{c.nama_kategori}</option>)}
-              </select>
-              <input type="date" required className="border p-3 rounded-xl text-black outline-none" onChange={(e) => setFormData({...formData, deadline: e.target.value})} />
-              <div className="flex gap-3 justify-end mt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-500 hover:text-gray-700">Batal</button>
-                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-xl font-semibold hover:bg-blue-700 transition">Simpan Tugas</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl p-8">
+            
+            {/* Header Modal */}
+            <div className="mb-6">
+              <div className="bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingTask ? "Edit Task" : "Add Task"}
+              </h2>
+              <p className="text-gray-500 text-sm mt-1">
+                {editingTask ? "Update the information below to modify the task" : "Fill in the form below to create a task"}
+              </p>
+            </div>
+
+            {/* Form Input */}
+            <form onSubmit={handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Kolom Kiri */}
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                    <input 
+                      type="text" 
+                      placeholder="Judul Tugas..." 
+                      value={formData.judul_task}
+                      required 
+                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 outline-none transition" 
+                      onChange={(e) => setFormData({...formData, judul_task: e.target.value})} 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Task Description</label>
+                    <textarea 
+                      placeholder="Give a description of the task..." 
+                      value={formData.deskripsi}
+                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 outline-none h-32 resize-none transition" 
+                      onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
+                    ></textarea>
+                  </div>
+                </div>
+
+                {/* Kolom Kanan */}
+                <div className="flex flex-col gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Penanggung Jawab</label>
+                    <select 
+                      required 
+                      value={formData.id_user}
+                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-green-500 transition bg-white" 
+                      onChange={(e) => setFormData({...formData, id_user: e.target.value})}
+                    >
+                      <option value="">Pilih Penanggung Jawab...</option>
+                      {users.map(u => <option key={u.id_user} value={u.id_user.toString()}>{u.nama_lengkap}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                    <select 
+                      required 
+                      value={formData.id_kategori}
+                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-green-500 transition bg-white" 
+                      onChange={(e) => setFormData({...formData, id_kategori: e.target.value})}
+                    >
+                      <option value="">Pilih Kategori...</option>
+                      {categories.map(c => <option key={c.id_kategori} value={c.id_kategori.toString()}>{c.nama_kategori}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+                    <input 
+                      type="date" 
+                      required 
+                      value={formData.deadline}
+                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 outline-none transition" 
+                      onChange={(e) => setFormData({...formData, deadline: e.target.value})} 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tombol Aksi */}
+              <div className="flex justify-end gap-3 mt-8 border-t pt-5">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingTask(null);
+                  }} 
+                  className="px-5 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition"
+                >
+                  Close
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition"
+                >
+                  {editingTask ? "Update Changes" : "Add Task"}
+                </button>
               </div>
             </form>
           </div>
