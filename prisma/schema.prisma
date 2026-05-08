@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Tabel untuk menyimpan data anggota tim [cite: 154]
+model tb_users {
+  id_user      Int        @id @default(autoincrement())
+  nama_lengkap String     @db.VarChar(100)
+  username     String     @db.VarChar(50) @unique
+  password     String     @db.VarChar(255)
+  email        String     @db.VarChar(100) @unique
+  tasks        tb_tasks[] // Relasi 1-to-many ke tb_tasks
+}
+
+// Tabel untuk kategori atau label warna [cite: 162]
+model tb_categories {
+  id_kategori   Int        @id @default(autoincrement())
+  nama_kategori String     @db.VarChar(50)
+  kode_warna    String     @db.VarChar(7)
+  tasks         tb_tasks[] // Relasi 1-to-many ke tb_tasks
+}
+
+enum StatusTask {
+  TODO    @map("To-Do")
+  DOING   @map("Doing")
+  DONE    @map("Done")
+}
+
+// Tabel rincian pekerjaan di dalam board [cite: 158]
+model tb_tasks {
+  id_task     Int           @id @default(autoincrement())
+  id_user     Int           // Foreign key ke tb_users [cite: 160]
+  id_kategori Int           // Foreign key ke tb_categories [cite: 160]
+  judul_task  String        @db.VarChar(150)
+  deskripsi   String        @db.Text
+  status      StatusTask    @default(TODO) // Nilai enum status pengerjaan [cite: 160]
+  deadline    DateTime      @db.Date
+  created_at  DateTime      @default(now()) @db.Timestamp()
+  
+  // Definisi Relasi
+  user        tb_users      @relation(fields: [id_user], references: [id_user])
+  kategori    tb_categories @relation(fields: [id_kategori], references: [id_kategori])
+}
