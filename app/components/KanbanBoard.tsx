@@ -26,9 +26,9 @@ type BoardData = {
 
 const initialBoardData: BoardData = {
   columns: {
-    "TODO": { id: "TODO", title: "To-Do", taskIds: [] },
-    "DOING": { id: "DOING", title: "Doing", taskIds: [] },
-    "DONE": { id: "DONE", title: "Done", taskIds: [] },
+    "TODO": { id: "TODO", title: "Yet To Start", taskIds: [] },
+    "DOING": { id: "DOING", title: "In Progress", taskIds: [] },
+    "DONE": { id: "DONE", title: "Completed", taskIds: [] },
   },
   tasks: {},
   columnOrder: ["TODO", "DOING", "DONE"],
@@ -52,6 +52,12 @@ export default function KanbanBoard() {
     deadline: ""
   });
   const [openMenuTaskId, setOpenMenuTaskId] = useState<string | null>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
   const { data: session } = useSession(); 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -128,10 +134,24 @@ export default function KanbanBoard() {
   }, []);
 
   // --- HANDLER UNTUK MEMBUKA DETAIL TASK ---
-  const handleTaskClick = (task: any) => {
+  const handleTaskClick = async (task: any) => {
     setSelectedTask(task);
     setIsDetailModalOpen(true);
     setOpenMenuTaskId(null);
+    
+    // Fetch comments
+    setIsLoadingComments(true);
+    try {
+      const res = await fetch(`/api/comments?taskId=${task.dbId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setComments(data);
+      }
+    } catch (error) {
+      console.error("Gagal mengambil komentar:", error);
+    } finally {
+      setIsLoadingComments(false);
+    }
   };
 
   // --- HANDLER UNTUK EDIT TASK DARI MENU ---
@@ -228,6 +248,82 @@ export default function KanbanBoard() {
 
 
   // --- LOGIKA TAMBAH/EDIT TUGAS (CREATE/UPDATE) ---
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim() || !selectedTask) return;
+
+    setIsSubmittingComment(true);
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId: selectedTask.dbId,
+          isi_komentar: newComment,
+        }),
+      });
+
+      if (res.ok) {
+        const createdComment = await res.json();
+        setComments([...comments, createdComment]);
+        setNewComment("");
+      } else {
+        const errorData = await res.json();
+        alert(`Gagal mengirim komentar: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error("Gagal mengirim komentar:", error);
+      alert("Terjadi kesalahan saat mengirim komentar.");
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    const isConfirmed = window.confirm("Apakah kamu yakin ingin menghapus komentar ini?");
+    if (!isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/comments?id=${commentId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        setComments(comments.filter(c => c.id_komentar !== commentId));
+      } else {
+        alert("Gagal menghapus komentar");
+      }
+    } catch (error) {
+      console.error("Gagal menghapus komentar:", error);
+    }
+  };
+
+  const handleUpdateComment = async (commentId: number) => {
+    if (!editCommentText.trim()) return;
+
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_komentar: commentId,
+          isi_komentar: editCommentText,
+        }),
+      });
+
+      if (res.ok) {
+        const updatedComment = await res.json();
+        setComments(comments.map(c => c.id_komentar === commentId ? updatedComment : c));
+        setEditingCommentId(null);
+        setEditCommentText("");
+      } else {
+        alert("Gagal mengupdate komentar");
+      }
+    } catch (error) {
+      console.error("Gagal mengupdate komentar:", error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -325,165 +421,194 @@ return (
       
       {/* HEADER: Tombol Tambah & Profil */}
       <div className="flex justify-between items-center mb-8">
-        <button 
-          onClick={() => {
-            setEditingTask(null);
-            setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
-            setIsModalOpen(true);
-          }}
-          className="bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow transition-all font-medium"
-        >
-          + Tambah Tugas Baru
-        </button>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Projects</h1>
+          <svg className="w-5 h-5 text-gray-400 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+        </div>
 
-        {/* PROFIL MENU */}
-        <div className="relative">
-          {/* Avatar (Huruf Pertama) */}
+        <div className="flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-2 text-gray-500 text-sm font-medium">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+            <span>Sort</span>
+            <span className="text-gray-900 font-bold cursor-pointer">A-Z ↓</span>
+          </div>
+
           <button 
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="w-11 h-11 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg uppercase shadow-md hover:bg-blue-700 hover:ring-4 ring-blue-100 transition-all focus:outline-none"
-            title="Account Menu"
+            onClick={() => {
+              setEditingTask(null);
+              setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
+              setIsModalOpen(true);
+            }}
+            className="bg-blue-600 text-white px-5 py-2.5 rounded-full shadow-sm hover:bg-blue-700 hover:shadow transition-all font-semibold text-sm"
           >
-            {session?.user?.name ? session.user.name[0] : "U"}
+            Add New Task
           </button>
 
-          {/* Dropdown Menu */}
-          {isProfileOpen && (
-            <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-              {/* Info Profil */}
-              <div className="p-5 border-b border-gray-50 bg-gray-50/50">
-                <p className="font-bold text-gray-800 text-base mb-0.5 truncate">
-                  {session?.user?.name || "Pengguna"}
-                </p>
-                <p className="text-gray-500 text-sm truncate">
-                  {session?.user?.email || "email@example.com"}
-                </p>
+          {/* PROFIL MENU */}
+          <div className="relative">
+            {/* Avatar (Huruf Pertama) */}
+            <button 
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="w-11 h-11 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg uppercase shadow-md hover:bg-blue-700 hover:ring-4 ring-blue-100 transition-all focus:outline-none"
+              title="Account Menu"
+            >
+              {session?.user?.name ? session.user.name[0] : "U"}
+            </button>
+
+            {/* Dropdown Menu */}
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                {/* Info Profil */}
+                <div className="p-5 border-b border-gray-50 bg-gray-50/50">
+                  <p className="font-bold text-gray-800 text-base mb-0.5 truncate">
+                    {session?.user?.name || "Pengguna"}
+                  </p>
+                  <p className="text-gray-500 text-sm truncate">
+                    {session?.user?.email || "email@example.com"}
+                  </p>
+                </div>
+                
+                {/* Tombol Aksi */}
+                <div className="p-2">
+                  <button 
+                    onClick={() => signOut({ callbackUrl: "/login" })}
+                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 font-semibold hover:bg-red-50 rounded-xl transition-colors flex items-center gap-3"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Log Out
+                  </button>
+                </div>
               </div>
-              
-              {/* Tombol Aksi */}
-              <div className="p-2">
-                <button 
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="w-full text-left px-4 py-2.5 text-sm text-red-600 font-semibold hover:bg-red-50 rounded-xl transition-colors flex items-center gap-3"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                  Log Out
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-6">
-          {data.columnOrder.map((columnId) => {
-            const column = data.columns[columnId];
-            const tasks = column.taskIds.map((taskId) => data.tasks[taskId]);
+      <div className="bg-white border border-gray-100 rounded-[2rem] p-6 lg:p-8 shadow-sm">
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="flex gap-6">
+            {data.columnOrder.map((columnId) => {
+              const column = data.columns[columnId];
+              const tasks = column.taskIds.map((taskId) => data.tasks[taskId]);
 
-            return (
-              <div key={column.id} className="flex flex-col bg-gray-200/80 rounded-xl w-1/3 p-4 min-h-[500px]">
-                <h2 className="font-bold text-gray-700 mb-4 px-2">{column.title} <span className="ml-2 text-sm bg-gray-300 px-2 py-0.5 rounded-full">{tasks.length}</span></h2>
-                <Droppable droppableId={column.id}>
-                  {(provided) => (
-                    <div ref={provided.innerRef} {...provided.droppableProps} className="flex-grow">
-                      {tasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
-                          {(provided) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              onClick={() => handleTaskClick(task)}
-                              className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all bg-white p-4 mb-3 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-3"
-                            >
-                              <div className="flex justify-between items-start mb-1">
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded w-fit text-white uppercase" style={{ backgroundColor: task.warnaKategori }}>
-                                  {task.kategori}
-                                </span>
+              return (
+                <div key={column.id} className="flex flex-col bg-white border border-gray-200 rounded-2xl w-1/3 p-4 min-h-[500px]">
+                  <div className="bg-gray-100 rounded-xl p-3 mb-4 flex justify-between items-center">
+                    <h2 className="font-semibold text-gray-800">{column.title}</h2>
+                    <span className="text-xs font-bold bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded-full shadow-sm">{tasks.length}</span>
+                  </div>
+                  <Droppable droppableId={column.id}>
+                    {(provided) => (
+                      <div ref={provided.innerRef} {...provided.droppableProps} className="flex-grow flex flex-col">
+                        {tasks.map((task, index) => (
+                          <Draggable key={task.id} draggableId={task.id} index={index}>
+                            {(provided) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                onClick={() => handleTaskClick(task)}
+                                className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all bg-white p-5 mb-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col gap-3"
+                              >
+                                <div className="flex justify-between items-start mb-1">
+                                  <span className="text-[11px] font-bold px-3 py-1 rounded-full w-fit text-white uppercase tracking-wider" style={{ backgroundColor: task.warnaKategori }}>
+                                    {task.kategori}
+                                  </span>
+                                  
+                                  {/* MENU 3 TITIK */}
+                                  <div className="relative">
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation(); 
+                                        setOpenMenuTaskId(openMenuTaskId === task.id ? null : task.id);
+                                      }}
+                                      className="text-gray-400 hover:text-gray-600 transition-colors z-10 p-1"
+                                      title="Menu"
+                                    >
+                                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="5" r="2" />
+                                        <circle cx="12" cy="12" r="2" />
+                                        <circle cx="12" cy="19" r="2" />
+                                      </svg>
+                                    </button>
+
+                                    {/* DROPDOWN MENU */}
+                                    {openMenuTaskId === task.id && (
+                                      <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation(); 
+                                            handleEditFromMenu(task);
+                                          }}
+                                          className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
+                                        >
+                                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                          </svg>
+                                          Edit Task
+                                        </button>
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation(); 
+                                            handleDeleteTask(task.id, task.dbId);
+                                            setOpenMenuTaskId(null);
+                                          }}
+                                          className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors border-t border-gray-100"
+                                        >
+                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                          </svg>
+                                          Delete Task
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                                 
-                                {/* MENU 3 TITIK */}
-                                <div className="relative">
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation(); 
-                                      setOpenMenuTaskId(openMenuTaskId === task.id ? null : task.id);
-                                    }}
-                                    className="text-gray-400 hover:text-gray-600 transition-colors z-10 p-1"
-                                    title="Menu"
-                                  >
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                      <circle cx="12" cy="5" r="2" />
-                                      <circle cx="12" cy="12" r="2" />
-                                      <circle cx="12" cy="19" r="2" />
-                                    </svg>
-                                  </button>
+                                <div>
+                                  <h4 className="font-extrabold text-gray-900 text-lg">{task.judul_task || "No Title"}</h4>
+                                  <p className="text-gray-500 text-sm mt-1 line-clamp-2">{task.content}</p>
+                                </div>
+                                
+                                {/* Avatar dan Deadline */}
+                                <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-100">
+                                  <div className="w-8 h-8 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0" title={task.nama_user}>
+                                    {getInitials(task.nama_user || "U")}
+                                  </div>
+                                  <span className="text-xs text-gray-500 font-medium">{formatDeadline(task.deadline)}</span>
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
 
-                                  {/* DROPDOWN MENU */}
-                                  {openMenuTaskId === task.id && (
-                                    <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-                                      <button 
-                                        onClick={(e) => {
-                                          e.stopPropagation(); 
-                                          handleEditFromMenu(task);
-                                        }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
-                                      >
-                                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                        </svg>
-                                        Edit Task
-                                      </button>
-                                      <button 
-                                        onClick={(e) => {
-                                          e.stopPropagation(); 
-                                          handleDeleteTask(task.id, task.dbId);
-                                          setOpenMenuTaskId(null);
-                                        }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors border-t border-gray-100"
-                                      >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
-                                        Delete Task
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <h4 className="font-semibold text-gray-900">{task.judul_task || task.content}</h4>
-                              
-                              {/* Avatar dan Deadline */}
-                              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                                <div className="w-8 h-8 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0" title={task.nama_user}>
-                                  {getInitials(task.nama_user || "U")}
-                                </div>
-                                <span className="text-xs text-gray-500 font-medium">{formatDeadline(task.deadline)}</span>
-                              </div>
+                        {/* Empty State */}
+                        {tasks.length === 0 && (
+                          <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3 mt-10">
+                            <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center">
+                              <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                             </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </div>
-            );
-          })}
-        </div>
-      </DragDropContext>
+                            <p className="text-sm font-medium">No Tasks currently. Board is empty!</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
+                </div>
+              );
+            })}
+          </div>
+        </DragDropContext>
+      </div>
 
       {/* MODAL DETAIL TASK */}
       {isDetailModalOpen && selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-8">
-            
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
             {/* Header Modal */}
             <div className="mb-6">
-              <div className="bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-              </div>
               <h2 className="text-2xl font-bold text-gray-900">{selectedTask.judul_task}</h2>
             </div>
 
@@ -530,6 +655,116 @@ return (
               </div>
             </div>
 
+            {/* Diskusi Tim */}
+            <div className="mt-8 border-t pt-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Diskusi Tim</h3>
+              
+              {/* Daftar Komentar */}
+              <div className="space-y-4 mb-6 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                {isLoadingComments ? (
+                  <p className="text-center text-sm text-gray-500">Memuat komentar...</p>
+                ) : comments.length === 0 ? (
+                  <p className="text-center text-sm text-gray-500">Belum ada diskusi untuk tugas ini.</p>
+                ) : (
+                  comments.map((comment: any) => (
+                    <div key={comment.id_komentar} className="flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center flex-shrink-0" title={comment.user.nama_lengkap}>
+                        {getInitials(comment.user.nama_lengkap || "U")}
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded-lg rounded-tl-none flex-1 border border-gray-100">
+                        <div className="flex justify-between items-start mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-gray-800">{comment.user.nama_lengkap}</span>
+                            <span className="text-[10px] text-gray-500">
+                              {new Date(comment.created_at).toLocaleString('id-ID', {
+                                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          
+                          {/* Aksi Edit/Delete jika pemilik komentar */}
+                          {session?.user && (session.user as any).id && parseInt((session.user as any).id) === comment.id_user && (
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => {
+                                  setEditingCommentId(comment.id_komentar);
+                                  setEditCommentText(comment.isi_komentar);
+                                }}
+                                className="text-gray-400 hover:text-blue-600 transition-colors"
+                                title="Edit Komentar"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteComment(comment.id_komentar)}
+                                className="text-gray-400 hover:text-red-600 transition-colors"
+                                title="Hapus Komentar"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {editingCommentId === comment.id_komentar ? (
+                          <div className="mt-2 flex gap-2">
+                            <input
+                              type="text"
+                              value={editCommentText}
+                              onChange={(e) => setEditCommentText(e.target.value)}
+                              className="flex-1 border border-gray-300 p-1.5 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleUpdateComment(comment.id_komentar);
+                                else if (e.key === 'Escape') setEditingCommentId(null);
+                              }}
+                            />
+                            <button 
+                              onClick={() => handleUpdateComment(comment.id_komentar)}
+                              className="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700"
+                            >
+                              Simpan
+                            </button>
+                            <button 
+                              onClick={() => setEditingCommentId(null)}
+                              className="px-2 py-1 bg-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-300"
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.isi_komentar}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Form Input Komentar */}
+              <form onSubmit={handleSubmitComment} className="flex gap-3">
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Tulis komentar..."
+                  className="flex-1 border border-gray-300 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  disabled={isSubmittingComment}
+                />
+                <button
+                  type="submit"
+                  disabled={!newComment.trim() || isSubmittingComment}
+                  className="px-4 py-2.5 bg-blue-600 text-white font-medium text-sm rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400 flex items-center justify-center min-w-[80px]"
+                >
+                  {isSubmittingComment ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  ) : (
+                    "Kirim"
+                  )}
+                </button>
+              </form>
+            </div>
+
             {/* Tombol Aksi */}
             <div className="flex justify-end gap-3 mt-8 border-t pt-5">
               <button 
@@ -548,15 +783,16 @@ return (
                 Edit Task
               </button>
             </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Modal Form Tambah & Edit Tugas */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl p-8">
-            
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 sm:p-6">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
             {/* Header Modal */}
             <div className="mb-6">
               <div className="bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center mb-4">
@@ -583,7 +819,7 @@ return (
                       placeholder="Judul Tugas..." 
                       value={formData.judul_task}
                       required 
-                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 outline-none transition" 
+                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition" 
                       onChange={(e) => setFormData({...formData, judul_task: e.target.value})} 
                     />
                   </div>
@@ -592,7 +828,7 @@ return (
                     <textarea 
                       placeholder="Give a description of the task..." 
                       value={formData.deskripsi}
-                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 outline-none h-32 resize-none transition" 
+                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none h-32 resize-none transition" 
                       onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
                     ></textarea>
                   </div>
@@ -605,7 +841,7 @@ return (
                     <select 
                       required 
                       value={formData.id_user}
-                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-green-500 transition bg-white" 
+                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 transition bg-white" 
                       onChange={(e) => setFormData({...formData, id_user: e.target.value})}
                     >
                       <option value="">Pilih Penanggung Jawab...</option>
@@ -617,7 +853,7 @@ return (
                     <select 
                       required 
                       value={formData.id_kategori}
-                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-green-500 transition bg-white" 
+                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 transition bg-white" 
                       onChange={(e) => setFormData({...formData, id_kategori: e.target.value})}
                     >
                       <option value="">Pilih Kategori...</option>
@@ -630,7 +866,7 @@ return (
                       type="date" 
                       required 
                       value={formData.deadline}
-                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 outline-none transition" 
+                      className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition" 
                       onChange={(e) => setFormData({...formData, deadline: e.target.value})} 
                     />
                   </div>
@@ -653,12 +889,13 @@ return (
                 </button>
                 <button 
                   type="submit" 
-                  className="px-5 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition"
+                  className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
                 >
                   {editingTask ? "Save" : "Add Task"}
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}

@@ -12,8 +12,9 @@ model tb_users {
   nama_lengkap String     @db.VarChar(100)
   username     String     @db.VarChar(50) @unique
   password     String     @db.VarChar(255)
-  email        String     @db.VarChar(100) @unique
-  tasks        tb_tasks[] // Relasi 1-to-many ke tb_tasks
+  email        String        @db.VarChar(100) @unique
+  tasks        tb_tasks[]    // Relasi 1-to-many ke tb_tasks
+  comments     tb_comments[] // Relasi 1-to-many ke tb_comments
 }
 
 // Tabel untuk kategori atau label warna [cite: 162]
@@ -44,4 +45,17 @@ model tb_tasks {
   // Definisi Relasi
   user        tb_users      @relation(fields: [id_user], references: [id_user])
   kategori    tb_categories @relation(fields: [id_kategori], references: [id_kategori])
+  comments    tb_comments[] // Relasi 1-to-many ke tb_comments
+}
+
+// Tabel untuk menyimpan komentar pada task
+model tb_comments {
+  id_komentar  Int      @id @default(autoincrement())
+  id_task      Int
+  id_user      Int
+  isi_komentar String   @db.Text
+  created_at   DateTime @default(now()) @db.Timestamp()
+
+  task         tb_tasks @relation(fields: [id_task], references: [id_task], onDelete: Cascade)
+  user         tb_users @relation(fields: [id_user], references: [id_user])
 }
