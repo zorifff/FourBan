@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const user = await prisma.tb_users.create({
       data: {
         nama_lengkap,
-        username, // Masukkan username ke database
+        username,
         email,
         password: hashedPassword,
       },

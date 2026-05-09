@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { useSession, signOut } from "next-auth/react";
 
 // 1. Definisi Tipe Data (Sesuai SRS)
 type Task = {
@@ -14,6 +15,7 @@ type Task = {
   deadline: string;    
   kategori: string;
   warnaKategori: string;
+  nama_user?: string;
 };
 
 type BoardData = {
@@ -37,6 +39,8 @@ export default function KanbanBoard() {
   const [data, setData] = useState<BoardData>(initialBoardData);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [editingTask, setEditingTask] = useState<any | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -47,6 +51,25 @@ export default function KanbanBoard() {
     id_kategori: "",
     deadline: ""
   });
+  const [openMenuTaskId, setOpenMenuTaskId] = useState<string | null>(null);
+  const { data: session } = useSession(); 
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // --- HELPER FUNCTION ---
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map(word => word[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const formatDeadline = (dateString: string) => {
+    if (!dateString) return "No deadline";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  };
 
   // --- FETCH DATA AWAL ---
   useEffect(() => {
@@ -65,6 +88,12 @@ export default function KanbanBoard() {
         setUsers(dbUsers);
         setCategories(dbCats);
 
+        // Buat mapping user untuk mendapatkan nama berdasarkan id_user
+        const userMap = dbUsers.reduce((map: any, user: any) => {
+          map[user.id_user] = user.nama_lengkap;
+          return map;
+        }, {});
+
         const newData = JSON.parse(JSON.stringify(initialBoardData));
         dbTasks.forEach((task: any) => {
           const taskId = `task-${task.id_task}`;
@@ -77,7 +106,8 @@ export default function KanbanBoard() {
             id_kategori: task.id_kategori || "",  
             deadline: task.deadline || "",      
             kategori: task.kategori?.nama_kategori || "Umum",
-            warnaKategori: task.kategori?.kode_warna || "#ccc"
+            warnaKategori: task.kategori?.kode_warna || "#ccc",
+            nama_user: userMap[task.id_user] || "Unknown"
           };
 
           const status = task.status || "TODO";
@@ -96,14 +126,18 @@ export default function KanbanBoard() {
 
     fetchData();
   }, []);
-    const handleEditClick = (task: any) => {
 
-    // 1. Set task yang sedang diedit
+  // --- HANDLER UNTUK MEMBUKA DETAIL TASK ---
+  const handleTaskClick = (task: any) => {
+    setSelectedTask(task);
+    setIsDetailModalOpen(true);
+    setOpenMenuTaskId(null);
+  };
+
+  // --- HANDLER UNTUK EDIT TASK DARI MENU ---
+  const handleEditFromMenu = (task: any) => {
     setEditingTask(task);
-    // 2. Format tanggal agar sesuai dengan input type="date"
     const formattedDate = task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : "";
-  
-    // 3. Isi form dengan data lama
     setFormData({
       judul_task: task.judul_task || "",
       deskripsi: task.content || "",
@@ -111,9 +145,9 @@ export default function KanbanBoard() {
       id_kategori: task.id_kategori ? task.id_kategori.toString() : "",
       deadline: formattedDate
     });
-
-    // 4. Buka modal
+    setIsDetailModalOpen(false);
     setIsModalOpen(true);
+    setOpenMenuTaskId(null);
   };
 
   // --- LOGIKA DRAG AND DROP (UPDATE STATUS) ---
@@ -213,6 +247,9 @@ export default function KanbanBoard() {
         });
         responseData = await response.json();
 
+        // Cari nama user berdasarkan id_user
+        const selectedUser = users.find(u => u.id_user.toString() === formData.id_user);
+
         // Update task di state
         const taskId = editingTask.id;
         setData({
@@ -228,7 +265,8 @@ export default function KanbanBoard() {
               warnaKategori: responseData.kategori.kode_warna,
               id_user: responseData.id_user,
               id_kategori: responseData.id_kategori,
-              deadline: responseData.deadline
+              deadline: responseData.deadline,
+              nama_user: selectedUser?.nama_lengkap || "Unknown"
             }
           }
         });
@@ -240,6 +278,9 @@ export default function KanbanBoard() {
           body: JSON.stringify(formData),
         });
         responseData = await response.json();
+
+        // Cari nama user berdasarkan id_user
+        const selectedUser = users.find(u => u.id_user.toString() === formData.id_user);
 
         const taskId = `task-${responseData.id_task}`;
 
@@ -256,7 +297,8 @@ export default function KanbanBoard() {
               warnaKategori: responseData.kategori.kode_warna,
               id_user: responseData.id_user,
               id_kategori: responseData.id_kategori,
-              deadline: responseData.deadline
+              deadline: responseData.deadline,
+              nama_user: selectedUser?.nama_lengkap || "Unknown"
             }
           },
           columns: {
@@ -278,18 +320,60 @@ export default function KanbanBoard() {
 
   if (isLoading) return <div className="p-8 text-center text-black flex items-center justify-center min-h-screen">Memuat data dari Neon...</div>;
 
-  return (
+return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      <button 
-        onClick={() => {
-          setEditingTask(null);
-          setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
-          setIsModalOpen(true);
-        }}
-        className="mb-6 bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow transition-all font-medium"
-      >
-        + Tambah Tugas Baru
-      </button>
+      
+      {/* HEADER: Tombol Tambah & Profil */}
+      <div className="flex justify-between items-center mb-8">
+        <button 
+          onClick={() => {
+            setEditingTask(null);
+            setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
+            setIsModalOpen(true);
+          }}
+          className="bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow transition-all font-medium"
+        >
+          + Tambah Tugas Baru
+        </button>
+
+        {/* PROFIL MENU */}
+        <div className="relative">
+          {/* Avatar (Huruf Pertama) */}
+          <button 
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className="w-11 h-11 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg uppercase shadow-md hover:bg-blue-700 hover:ring-4 ring-blue-100 transition-all focus:outline-none"
+            title="Account Menu"
+          >
+            {session?.user?.name ? session.user.name[0] : "U"}
+          </button>
+
+          {/* Dropdown Menu */}
+          {isProfileOpen && (
+            <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              {/* Info Profil */}
+              <div className="p-5 border-b border-gray-50 bg-gray-50/50">
+                <p className="font-bold text-gray-800 text-base mb-0.5 truncate">
+                  {session?.user?.name || "Pengguna"}
+                </p>
+                <p className="text-gray-500 text-sm truncate">
+                  {session?.user?.email || "email@example.com"}
+                </p>
+              </div>
+              
+              {/* Tombol Aksi */}
+              <div className="p-2">
+                <button 
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="w-full text-left px-4 py-2.5 text-sm text-red-600 font-semibold hover:bg-red-50 rounded-xl transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                  Log Out
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex gap-6">
@@ -310,28 +394,72 @@ export default function KanbanBoard() {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              onClick={() => handleEditClick(task)}
-                              className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all bg-white p-4 mb-3 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-2"
+                              onClick={() => handleTaskClick(task)}
+                              className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all bg-white p-4 mb-3 rounded-lg shadow-sm border border-gray-200 flex flex-col gap-3"
                             >
                               <div className="flex justify-between items-start mb-1">
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded w-fit text-white uppercase" style={{ backgroundColor: task.warnaKategori }}>
                                   {task.kategori}
                                 </span>
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation(); 
-                                    handleDeleteTask(task.id, task.dbId);
-                                  }}
-                                  className="text-gray-400 hover:text-red-500 transition-colors z-10 p-1"
-                                  title="Hapus Tugas"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                  </svg>
-                                </button>
+                                
+                                {/* MENU 3 TITIK */}
+                                <div className="relative">
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation(); 
+                                      setOpenMenuTaskId(openMenuTaskId === task.id ? null : task.id);
+                                    }}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors z-10 p-1"
+                                    title="Menu"
+                                  >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                      <circle cx="12" cy="5" r="2" />
+                                      <circle cx="12" cy="12" r="2" />
+                                      <circle cx="12" cy="19" r="2" />
+                                    </svg>
+                                  </button>
+
+                                  {/* DROPDOWN MENU */}
+                                  {openMenuTaskId === task.id && (
+                                    <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                      <button 
+                                        onClick={(e) => {
+                                          e.stopPropagation(); 
+                                          handleEditFromMenu(task);
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
+                                      >
+                                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                        Edit Task
+                                      </button>
+                                      <button 
+                                        onClick={(e) => {
+                                          e.stopPropagation(); 
+                                          handleDeleteTask(task.id, task.dbId);
+                                          setOpenMenuTaskId(null);
+                                        }}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors border-t border-gray-100"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        Delete Task
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                               <h4 className="font-semibold text-gray-900">{task.judul_task || task.content}</h4>
-                              <p className="text-sm text-gray-600 line-clamp-2">{task.content}</p>
+                              
+                              {/* Avatar dan Deadline */}
+                              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                                <div className="w-8 h-8 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0" title={task.nama_user}>
+                                  {getInitials(task.nama_user || "U")}
+                                </div>
+                                <span className="text-xs text-gray-500 font-medium">{formatDeadline(task.deadline)}</span>
+                              </div>
                             </div>
                           )}
                         </Draggable>
@@ -346,6 +474,84 @@ export default function KanbanBoard() {
         </div>
       </DragDropContext>
 
+      {/* MODAL DETAIL TASK */}
+      {isDetailModalOpen && selectedTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-8">
+            
+            {/* Header Modal */}
+            <div className="mb-6">
+              <div className="bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">{selectedTask.judul_task}</h2>
+            </div>
+
+            {/* Detail Informasi */}
+            <div className="space-y-6">
+              {/* Deskripsi */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi</label>
+                <p className="text-gray-700 text-base leading-relaxed bg-gray-50 p-4 rounded-lg min-h-24">
+                  {selectedTask.content || "Tidak ada deskripsi"}
+                </p>
+              </div>
+
+              {/* Grid Informasi */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {/* User */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">Penanggung Jawab</label>
+                  <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                      {getInitials(selectedTask.nama_user || "U")}
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">{selectedTask.nama_user || "Unknown"}</span>
+                  </div>
+                </div>
+
+                {/* Kategori */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">Kategori</label>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <span className="inline-block text-xs font-bold px-3 py-1 rounded text-white" style={{ backgroundColor: selectedTask.warnaKategori }}>
+                      {selectedTask.kategori}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Deadline */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">Deadline</label>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-sm font-medium text-gray-700">{formatDeadline(selectedTask.deadline)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tombol Aksi */}
+            <div className="flex justify-end gap-3 mt-8 border-t pt-5">
+              <button 
+                onClick={() => setIsDetailModalOpen(false)}
+                className="px-5 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition"
+              >
+                Tutup
+              </button>
+              <button 
+                onClick={() => handleEditFromMenu(selectedTask)}
+                className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                Edit Task
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Form Tambah & Edit Tugas */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -357,7 +563,7 @@ export default function KanbanBoard() {
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
               </div>
               <h2 className="text-2xl font-bold text-gray-900">
-                {editingTask ? "Edit Task" : "Add Task"}
+                {editingTask ? editingTask.judul_task : "Add Task"}
               </h2>
               <p className="text-gray-500 text-sm mt-1">
                 {editingTask ? "Update the information below to modify the task" : "Fill in the form below to create a task"}
@@ -449,7 +655,7 @@ export default function KanbanBoard() {
                   type="submit" 
                   className="px-5 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition"
                 >
-                  {editingTask ? "Update Changes" : "Add Task"}
+                  {editingTask ? "Save" : "Add Task"}
                 </button>
               </div>
             </form>
