@@ -61,6 +61,9 @@ export default function KanbanBoard() {
   const [editCommentText, setEditCommentText] = useState("");
   const { data: session } = useSession();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [sortBy, setSortBy] = useState("default");
+  
+  // Backward compatibility untuk handleSort lama jika ada yg pakai
   const [sortOption, setSortOption] = useState<string>("A-Z");
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
@@ -282,7 +285,10 @@ export default function KanbanBoard() {
 
     // Optimistic UI Update
     const startTaskIds = Array.from(startColumn.taskIds);
-    startTaskIds.splice(source.index, 1);
+    const realSourceIndex = startTaskIds.indexOf(draggableId);
+    if (realSourceIndex !== -1) {
+      startTaskIds.splice(realSourceIndex, 1);
+    }
     const finishTaskIds = source.droppableId === destination.droppableId ? startTaskIds : Array.from(finishColumn.taskIds);
     if (source.droppableId !== destination.droppableId) {
       finishTaskIds.splice(destination.index, 0, draggableId);
@@ -518,200 +524,301 @@ export default function KanbanBoard() {
   if (isLoading) return <div className="p-8 text-center text-black flex items-center justify-center min-h-screen">Memuat data dari Neon...</div>;
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-
-      {/* HEADER: Tombol Tambah & Profil */}
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Projects</h1>
-          <svg className="w-5 h-5 text-gray-400 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+    <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
+      {/* Navbar */}
+      <div className="w-full h-16 sm:h-20 bg-white shadow-sm border-b border-slate-200 px-8 flex justify-between items-center flex-shrink-0 z-10 relative">
+        {/* Logo */}
+        <div className="flex items-center gap-2 mt-2">
+          {/* Logo icon */}
+          <div className="relative w-9 h-9 flex-shrink-0">
+            <div className="w-1.5 h-6 absolute left-[3.50px] top-[4.66px] overflow-hidden">
+                <div className="w-1.5 h-1.5 absolute left-0 top-0 bg-blue-500" />
+                <div className="w-1.5 h-1 absolute left-0 top-[7px] bg-blue-500/80" />
+                <div className="w-1.5 h-1.5 absolute left-0 top-[12.83px] bg-blue-500/60" />
+                <div className="w-1.5 h-1 absolute left-0 top-[21px] bg-blue-500/40" />
+            </div>
+            <div className="w-1.5 h-6 absolute left-[14px] top-[4.66px] overflow-hidden">
+                <div className="w-1.5 h-2 absolute left-0 top-0 bg-blue-400" />
+                <div className="w-1.5 h-1.5 absolute left-0 top-[9.33px] bg-blue-400/70" />
+                <div className="w-1.5 h-2.5 absolute left-0 top-[16.33px] bg-blue-400/50" />
+            </div>
+            <div className="w-1.5 h-6 absolute left-[24.50px] top-[4.66px] overflow-hidden">
+                <div className="w-1.5 h-1 absolute left-0 top-0 bg-blue-300" />
+                <div className="w-1.5 h-1.5 absolute left-0 top-[5.83px] bg-blue-300/80" />
+                <div className="w-1.5 h-1.5 absolute left-0 top-[12.83px] bg-blue-300/60" />
+                <div className="w-1.5 h-1.5 absolute left-0 top-[19.25px] bg-blue-300/50" />
+            </div>
+          </div>
+          {/* Text */}
+          <div className="flex flex-col">
+            <div className="flex items-center">
+              <span className="text-blue-500 text-xl font-bold font-['Inter'] leading-8">Four</span>
+              <span className="text-blue-300 text-xl font-bold font-['Inter'] leading-8">Ban</span>
+            </div>
+            <div className="text-blue-200 text-[8px] font-medium font-['Inter'] leading-[8px] tracking-[0.08em] mt-[-4px]">
+              ORGANIZE • FLOW • DELIVER
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          {/* SORT MENU */}
-          <div className="relative hidden md:flex items-center gap-2 text-gray-500 text-sm font-medium z-30">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-            <span>Sort</span>
-            <span 
-              className="text-gray-900 font-bold cursor-pointer flex items-center gap-1"
-              onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-            >
-              {sortOption} <span className="text-xs">↓</span>
-            </span>
-
-            {/* Dropdown Sort */}
-            {isSortMenuOpen && (
-              <div className="absolute top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
-                {["A-Z", "Z-A", "Kategori (Low - High)", "Kategori (High - Low)", "Deadline (Terdekat)", "Deadline (Terjauh)"].map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => handleSort(opt)}
-                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors ${sortOption === opt ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700'}`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
+        {/* User Info */}
+        <div className="flex items-center gap-3 relative cursor-pointer" onClick={() => setIsProfileOpen(!isProfileOpen)}>
+          <div className="hidden sm:flex text-right flex-col justify-center">
+            <div className="text-gray-900 text-base font-semibold font-['Inter'] leading-6">{session?.user?.name || "User"}</div>
+            <div className="text-gray-500 text-xs font-medium font-['Inter'] leading-4">{session?.user?.email || "user@email.com"}</div>
+          </div>
+          <div className="w-11 h-11 bg-gradient-to-br from-indigo-300 to-blue-900 rounded-full shadow-md flex justify-center items-center">
+            <span className="text-white text-lg font-semibold font-['Inter']">{session?.user?.name ? session.user.name[0].toUpperCase() : "U"}</span>
           </div>
 
-          <button
-            onClick={() => {
-              setEditingTask(null);
-              setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
-              setIsModalOpen(true);
-            }}
-            className="bg-blue-600 text-white px-5 py-2.5 rounded-full shadow-sm hover:bg-blue-700 hover:shadow transition-all font-semibold text-sm"
-          >
-            Add New Task
-          </button>
-
-          {/* PROFIL MENU */}
-          <div className="relative">
-            {/* Avatar (Huruf Pertama) */}
-            <button
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="w-11 h-11 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg uppercase shadow-md hover:bg-blue-700 hover:ring-4 ring-blue-100 transition-all focus:outline-none"
-              title="Account Menu"
-            >
-              {session?.user?.name ? session.user.name[0] : "U"}
-            </button>
-
-            {/* Dropdown Menu */}
-            {isProfileOpen && (
-              <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                {/* Info Profil */}
-                <div className="p-5 border-b border-gray-50 bg-gray-50/50">
-                  <p className="font-bold text-gray-800 text-base mb-0.5 truncate">
-                    {session?.user?.name || "Pengguna"}
-                  </p>
-                  <p className="text-gray-500 text-sm truncate">
-                    {session?.user?.email || "email@example.com"}
-                  </p>
-                </div>
-
-                {/* Tombol Aksi */}
-                <div className="p-2">
-                  <button
-                    onClick={() => signOut({ callbackUrl: "/login" })}
-                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 font-semibold hover:bg-red-50 rounded-xl transition-colors flex items-center gap-3"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    Log Out
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Profil Dropdown */}
+          {isProfileOpen && (
+            <div className="absolute top-14 right-0 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+               <button
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="w-full text-left px-4 py-3 text-sm text-red-600 font-semibold hover:bg-red-50 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                  Log Out
+               </button>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-[2rem] p-6 lg:p-8 shadow-sm">
+      <div className="flex-1 flex flex-col px-6 pt-8 pb-12 gap-6 max-w-[1200px] w-full mx-auto overflow-x-hidden">
+        {/* Banner */}
+        <div className="w-full sm:h-44 bg-gradient-to-br from-[#F5FEFF] to-[#AAC0E1] rounded-2xl shadow-sm border border-blue-100 p-8 flex flex-col sm:flex-row justify-between items-center gap-6 sm:gap-0 relative overflow-hidden">
+          <div className="flex flex-col gap-2 relative z-10 w-full sm:w-2/3">
+            <h1 className="text-blue-900 text-[28px] sm:text-4xl font-bold font-['Inter'] leading-10">
+              Selamat Datang, {session?.user?.name?.split(' ')[0] || "User"}!
+            </h1>
+            <p className="text-slate-600 text-base sm:text-lg font-normal font-['Inter'] leading-7">
+              Mari kelola dan selesaikan pekerjaan Anda hari ini dengan lebih produktif
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-md border border-blue-200 w-28 h-28 flex flex-col justify-center items-center relative z-10 flex-shrink-0">
+            <div className="text-gray-500 text-sm font-normal font-['Inter'] leading-5 mb-1">Total Task</div>
+            <div className="text-[#0E2F76] text-3xl font-bold font-['Inter'] leading-9">
+              {Object.keys(data.tasks).length}
+            </div>
+          </div>
+        </div>
+
+        {/* Toolbar & Board Wrapper */}
+        <div className="flex flex-col gap-4 w-full">
+          {/* Toolbar Sortir */}
+          <div className="flex justify-end items-center w-full">
+            <div className="relative">
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value)}
+                className="appearance-none border border-black/10 rounded-[10px] bg-white text-[13px] font-semibold font-['Inter'] px-4 py-2.5 pr-10 text-slate-700 outline-none hover:shadow-md transition-shadow cursor-pointer focus:ring-2 focus:ring-blue-500/50"
+              >
+                <option value="default">Sortir: Default</option>
+                <option value="A-Z">Abjad (A - Z)</option>
+                <option value="Z-A">Abjad (Z - A)</option>
+                <option value="Priority-Low">Prioritas (Low - High)</option>
+                <option value="Priority-High">Prioritas (High - Low)</option>
+                <option value="Deadline-Terdekat">Deadline (Terdekat)</option>
+                <option value="Deadline-Terjauh">Deadline (Terjauh)</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Board */}
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex gap-6">
+          <div className="flex flex-nowrap md:flex-wrap lg:flex-nowrap gap-6 w-full">
             {data.columnOrder.map((columnId) => {
               const column = data.columns[columnId];
               const tasks = column.taskIds.map((taskId) => data.tasks[taskId]);
 
+              // Logika Sortir
+              let sortedTasks = [...tasks];
+              if (sortBy === "A-Z") {
+                sortedTasks.sort((a, b) => (a.judul_task || "").localeCompare(b.judul_task || ""));
+              } else if (sortBy === "Z-A") {
+                sortedTasks.sort((a, b) => (b.judul_task || "").localeCompare(a.judul_task || ""));
+              } else if (sortBy === "Priority-Low") {
+                const p = { low: 1, medium: 2, high: 3 } as any;
+                sortedTasks.sort((a, b) => (p[a.kategori?.toLowerCase()] || 0) - (p[b.kategori?.toLowerCase()] || 0));
+              } else if (sortBy === "Priority-High") {
+                const p = { low: 1, medium: 2, high: 3 } as any;
+                sortedTasks.sort((a, b) => (p[b.kategori?.toLowerCase()] || 0) - (p[a.kategori?.toLowerCase()] || 0));
+              } else if (sortBy === "Deadline-Terdekat") {
+                sortedTasks.sort((a, b) => {
+                  if (!a.deadline && !b.deadline) return 0;
+                  if (!a.deadline) return 1;
+                  if (!b.deadline) return -1;
+                  return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+                });
+              } else if (sortBy === "Deadline-Terjauh") {
+                sortedTasks.sort((a, b) => {
+                  if (!a.deadline && !b.deadline) return 0;
+                  if (!a.deadline) return 1;
+                  if (!b.deadline) return -1;
+                  return new Date(b.deadline).getTime() - new Date(a.deadline).getTime();
+                });
+              }
+
+              let titleText = "";
+              let countBgColor = "";
+              let countTextColor = "";
+              let plusIconColor = "";
+              if (columnId === "TODO") {
+                 titleText = "Belum Dikerjakan";
+                 countBgColor = "bg-red-100";
+                 countTextColor = "text-black";
+                 plusIconColor = "text-red-600";
+              } else if (columnId === "DOING") {
+                 titleText = "Sedang Dikerjakan";
+                 countBgColor = "bg-yellow-50";
+                 countTextColor = "text-black";
+                 plusIconColor = "text-orange-500";
+              } else if (columnId === "DONE") {
+                 titleText = "Selesai";
+                 countBgColor = "bg-green-100";
+                 countTextColor = "text-black";
+                 plusIconColor = "text-green-700";
+              }
+
               return (
-                <div key={column.id} className="flex flex-col bg-white border border-gray-200 rounded-2xl w-1/3 p-4 min-h-[500px]">
-                  <div className="bg-gray-100 rounded-xl p-3 mb-4 flex justify-between items-center">
-                    <h2 className="font-semibold text-gray-800">{column.title}</h2>
-                    <span className="text-xs font-bold bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded-full shadow-sm">{tasks.length}</span>
+                <div key={column.id} className="flex-1 min-w-[320px] bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4 p-5">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-gray-900 text-lg font-medium font-['Inter'] leading-7">{titleText}</h2>
+                      <div className={`w-6 h-6 ${countBgColor} rounded-full flex justify-center items-center`}>
+                        <span className={`${countTextColor} text-sm font-normal font-['Inter'] leading-5`}>{tasks.length}</span>
+                      </div>
+                    </div>
+                    
+                    <button 
+                      className={`w-5 h-5 flex justify-center items-center ${plusIconColor} hover:scale-110 transition-transform`}
+                      onClick={() => {
+                        setEditingTask(null);
+                        setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
+                        setIsModalOpen(true);
+                      }}
+                      title="Tambah Task Baru"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.67" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path>
+                      </svg>
+                    </button>
                   </div>
+
                   <Droppable droppableId={column.id}>
                     {(provided) => (
-                      <div ref={provided.innerRef} {...provided.droppableProps} className="flex-grow flex flex-col">
-                        {tasks.map((task, index) => (
-                          <Draggable key={task.id} draggableId={task.id} index={index}>
-                            {(provided) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                onClick={() => handleTaskClick(task)}
-                                className="cursor-pointer hover:border-blue-400 hover:shadow-md transition-all bg-white p-5 mb-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col gap-3"
-                              >
-                                <div className="flex justify-between items-start mb-1">
-                                  <span className="text-[11px] font-bold px-3 py-1 rounded-full w-fit text-white uppercase tracking-wider" style={{ backgroundColor: task.warnaKategori }}>
-                                    {task.kategori}
-                                  </span>
+                      <div ref={provided.innerRef} {...provided.droppableProps} className="flex-1 flex flex-col gap-3 min-h-[150px]">
+                        {sortedTasks.map((task, index) => {
+                          let dateColor = "text-gray-900"; // Hitam
+                          let DateIcon = (
+                            <svg className="w-3.5 h-3.5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          );
 
-                                  {/* MENU 3 TITIK */}
-                                  <div className="relative">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setOpenMenuTaskId(openMenuTaskId === task.id ? null : task.id);
-                                      }}
-                                      className="text-gray-400 hover:text-gray-600 transition-colors z-10 p-1"
-                                      title="Menu"
-                                    >
-                                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                        <circle cx="12" cy="5" r="2" />
-                                        <circle cx="12" cy="12" r="2" />
-                                        <circle cx="12" cy="19" r="2" />
+                          if (task.deadline) {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const deadlineDate = new Date(task.deadline);
+                            deadlineDate.setHours(0, 0, 0, 0);
+
+                            if (deadlineDate.getTime() === today.getTime()) {
+                              dateColor = "text-orange-500";
+                              DateIcon = (
+                                <svg className="w-3.5 h-3.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              );
+                            } else if (deadlineDate.getTime() < today.getTime()) {
+                              dateColor = "text-red-600";
+                              DateIcon = (
+                                <svg className="w-3.5 h-3.5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                              );
+                            }
+                          }
+
+                          return (
+                            <Draggable key={task.id} draggableId={task.id} index={index}>
+                              {(provided) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  onClick={() => handleTaskClick(task)}
+                                  className="group w-full bg-white rounded-[10px] border border-black/10 flex flex-col p-3 gap-2 relative cursor-pointer hover:shadow-md transition-shadow"
+                                >
+                                  {/* Card Header */}
+                                  <div className="flex justify-between items-start">
+                                    <div className="text-neutral-950 text-[15px] font-semibold font-['Inter'] leading-5 pr-12 line-clamp-1">{task.judul_task || "No Title"}</div>
+                                    
+                                    {/* Action Icons (Edit & Delete) */}
+                                    <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); handleEditFromMenu(task); }} 
+                                        className="text-blue-600 hover:text-blue-800 bg-blue-50 p-1.5 rounded-sm"
+                                      >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                      </button>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id, task.dbId); }} 
+                                        className="text-red-600 hover:text-red-800 bg-red-50 p-1.5 rounded-sm"
+                                      >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Description */}
+                                  <div className="text-gray-500 text-[13px] font-normal font-['Inter'] leading-4 line-clamp-2">
+                                    {task.content || "Tanpa Deskripsi"}
+                                  </div>
+
+                                  {/* Info Items */}
+                                  <div className="flex flex-col gap-1.5 mt-0.5">
+                                    {/* Assignee */}
+                                    <div className="flex items-center gap-1.5 text-gray-500 text-[13px]">
+                                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                       </svg>
-                                    </button>
-
-                                    {/* DROPDOWN MENU */}
-                                    {openMenuTaskId === task.id && (
-                                      <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditFromMenu(task);
-                                          }}
-                                          className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 flex items-center gap-2 transition-colors"
-                                        >
-                                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                          </svg>
-                                          Edit Task
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteTask(task.id, task.dbId);
-                                            setOpenMenuTaskId(null);
-                                          }}
-                                          className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors border-t border-gray-100"
-                                        >
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                          </svg>
-                                          Delete Task
-                                        </button>
-                                      </div>
-                                    )}
+                                      <span className="line-clamp-1">{task.nama_user || "Unknown"}</span>
+                                    </div>
+                                    {/* Kategori */}
+                                    <div className="flex items-center gap-1.5">
+                                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                      </svg>
+                                      <span className="px-1.5 py-0.5 rounded-sm text-[11px] font-medium font-['Inter']" style={{ backgroundColor: (task.warnaKategori || '#A855F7') + '22', color: '#000000' }}>
+                                        {task.kategori || "Umum"}
+                                      </span>
+                                    </div>
+                                    {/* Date */}
+                                    <div className={`flex items-center gap-1.5 ${dateColor} text-[13px] font-medium`}>
+                                      {DateIcon}
+                                      <span>{formatDeadline(task.deadline)}</span>
+                                    </div>
                                   </div>
                                 </div>
-
-                                <div>
-                                  <h4 className="font-extrabold text-gray-900 text-lg">{task.judul_task || "No Title"}</h4>
-                                  <p className="text-gray-500 text-sm mt-1 line-clamp-2">{task.content}</p>
-                                </div>
-
-                                {/* Avatar dan Deadline */}
-                                <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-100">
-                                  <div className="w-8 h-8 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0" title={task.nama_user}>
-                                    {getInitials(task.nama_user || "U")}
-                                  </div>
-                                  <DeadlineBadge date={task.deadline} />
-                                </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
+                              )}
+                            </Draggable>
+                          );
+                        })}
                         {provided.placeholder}
 
                         {/* Empty State */}
                         {tasks.length === 0 && (
-                          <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3 mt-10">
-                            <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center">
-                              <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            </div>
-                            <p className="text-sm font-medium">No Tasks currently. Board is empty!</p>
+                          <div className="w-full flex justify-center items-center py-6 text-gray-400 text-sm font-normal font-['Inter']">
+                            Belum ada task
                           </div>
                         )}
                       </div>
@@ -722,24 +829,25 @@ export default function KanbanBoard() {
             })}
           </div>
         </DragDropContext>
+        </div>
       </div>
 
       {/* MODAL DETAIL TASK */}
       {isDetailModalOpen && selectedTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 sm:p-6">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="bg-gradient-to-br from-[#F5FEFF] to-[#E2EAF4] w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
               {/* Header Modal */}
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">{selectedTask.judul_task}</h2>
+                <h2 className="text-2xl font-bold text-[#0E2F76]">{selectedTask.judul_task}</h2>
               </div>
 
               {/* Detail Informasi */}
               <div className="space-y-6">
                 {/* Deskripsi */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Deskripsi</label>
-                  <p className="text-gray-700 text-base leading-relaxed bg-gray-50 p-4 rounded-lg min-h-24">
+                  <label className="block text-sm font-semibold text-[#0E2F76] mb-2">Deskripsi</label>
+                  <p className="text-[#0E2F76]/80 text-base leading-relaxed bg-white/60 shadow-sm border border-white/50 p-4 rounded-xl min-h-24">
                     {selectedTask.content || "Tidak ada deskripsi"}
                   </p>
                 </div>
@@ -748,56 +856,79 @@ export default function KanbanBoard() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {/* User */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">Penanggung Jawab</label>
-                    <div className="flex items-center gap-2 bg-gray-50 p-3 rounded-lg">
-                      <div className="w-8 h-8 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                    <label className="block text-xs font-semibold text-[#0E2F76] uppercase mb-2">Penanggung Jawab</label>
+                    <div className="flex items-center gap-2 bg-white/60 shadow-sm border border-white/50 p-3 rounded-xl">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-[#0E2F76] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
                         {getInitials(selectedTask.nama_user || "U")}
                       </div>
-                      <span className="text-sm font-medium text-gray-700">{selectedTask.nama_user || "Unknown"}</span>
+                      <span className="text-sm font-medium text-[#0E2F76]">{selectedTask.nama_user || "Unknown"}</span>
                     </div>
                   </div>
 
                   {/* Kategori */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">Kategori</label>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <span className="inline-block text-xs font-bold px-3 py-1 rounded text-white" style={{ backgroundColor: selectedTask.warnaKategori }}>
-                        {selectedTask.kategori}
-                      </span>
+                    <label className="block text-xs font-semibold text-[#0E2F76] uppercase mb-2">Kategori</label>
+                    <div className="bg-white/60 shadow-sm border border-white/50 p-3 rounded-xl flex items-center">
+                      <div className="h-[32px] flex items-center">
+                        <span className="px-2 py-0.5 rounded-sm text-[11px] font-semibold font-['Inter'] uppercase" style={{ backgroundColor: (selectedTask.warnaKategori || '#A855F7') + '22', color: '#000000' }}>
+                          {selectedTask.kategori || "Umum"}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Deadline */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">Deadline</label>
-                    <div className="bg-gray-50 p-2.5 rounded-lg flex items-center">
-                      <DeadlineBadge date={selectedTask.deadline} />
+                    <label className="block text-xs font-semibold text-[#0E2F76] uppercase mb-2">Deadline</label>
+                    <div className="bg-white/60 shadow-sm border border-white/50 p-3 rounded-xl flex items-center">
+                      {(() => {
+                        let dateColor = "text-gray-900"; // Hitam
+
+                        if (selectedTask.deadline) {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const deadlineDate = new Date(selectedTask.deadline);
+                          deadlineDate.setHours(0, 0, 0, 0);
+
+                          if (deadlineDate.getTime() === today.getTime()) {
+                            dateColor = "text-orange-500";
+                          } else if (deadlineDate.getTime() < today.getTime()) {
+                            dateColor = "text-red-600";
+                          }
+                        }
+
+                        return (
+                          <div className={`flex items-center ${dateColor} text-sm font-semibold font-['Inter'] w-full h-[32px]`}>
+                            <span>{formatDeadline(selectedTask.deadline)}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Diskusi Tim */}
-              <div className="mt-8 border-t pt-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Diskusi Tim</h3>
+              <div className="mt-8 pt-2">
+                <h3 className="text-lg font-bold text-[#0E2F76] mb-4">Diskusi Tim</h3>
 
                 {/* Daftar Komentar */}
                 <div className="space-y-4 mb-6 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                   {isLoadingComments ? (
-                    <p className="text-center text-sm text-gray-500">Memuat komentar...</p>
+                    <p className="text-center text-sm text-[#0E2F76]/60">Memuat komentar...</p>
                   ) : comments.length === 0 ? (
-                    <p className="text-center text-sm text-gray-500">Belum ada diskusi untuk tugas ini.</p>
+                    <p className="text-center text-sm text-[#0E2F76]/60">Belum ada diskusi untuk tugas ini.</p>
                   ) : (
                     comments.map((comment: any) => (
                       <div key={comment.id_komentar} className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center flex-shrink-0" title={comment.user.nama_lengkap}>
+                        <div className="w-8 h-8 rounded-full bg-white text-[#0E2F76] text-xs font-bold flex items-center justify-center flex-shrink-0 shadow-sm" title={comment.user.nama_lengkap}>
                           {getInitials(comment.user.nama_lengkap || "U")}
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-lg rounded-tl-none flex-1 border border-gray-100">
+                        <div className="bg-white/70 p-3 rounded-xl rounded-tl-none flex-1 border border-white/50 shadow-sm">
                           <div className="flex justify-between items-start mb-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-bold text-gray-800">{comment.user.nama_lengkap}</span>
-                              <span className="text-[10px] text-gray-500">
+                              <span className="text-sm font-bold text-[#0E2F76]">{comment.user.nama_lengkap}</span>
+                              <span className="text-[10px] text-[#0E2F76]/60">
                                 {new Date(comment.created_at).toLocaleString('id-ID', {
                                   day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
                                 })}
@@ -812,14 +943,14 @@ export default function KanbanBoard() {
                                     setEditingCommentId(comment.id_komentar);
                                     setEditCommentText(comment.isi_komentar);
                                   }}
-                                  className="text-gray-400 hover:text-blue-600 transition-colors"
+                                  className="text-[#0E2F76]/40 hover:text-[#0E2F76] transition-colors"
                                   title="Edit Komentar"
                                 >
                                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                 </button>
                                 <button
                                   onClick={() => handleDeleteComment(comment.id_komentar)}
-                                  className="text-gray-400 hover:text-red-600 transition-colors"
+                                  className="text-[#0E2F76]/40 hover:text-red-500 transition-colors"
                                   title="Hapus Komentar"
                                 >
                                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -834,7 +965,7 @@ export default function KanbanBoard() {
                                 type="text"
                                 value={editCommentText}
                                 onChange={(e) => setEditCommentText(e.target.value)}
-                                className="flex-1 border border-gray-300 p-1.5 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none"
+                                className="flex-1 border border-indigo-200 p-1.5 rounded-lg text-sm focus:ring-1 focus:ring-[#0E2F76] outline-none"
                                 autoFocus
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') handleUpdateComment(comment.id_komentar);
@@ -843,19 +974,19 @@ export default function KanbanBoard() {
                               />
                               <button
                                 onClick={() => handleUpdateComment(comment.id_komentar)}
-                                className="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700"
+                                className="px-2 py-1 bg-[#0E2F76] text-white text-xs font-medium rounded-md hover:bg-blue-900"
                               >
                                 Simpan
                               </button>
                               <button
                                 onClick={() => setEditingCommentId(null)}
-                                className="px-2 py-1 bg-gray-200 text-gray-700 text-xs font-medium rounded hover:bg-gray-300"
+                                className="px-2 py-1 bg-white border border-slate-200 text-slate-700 text-xs font-medium rounded-md hover:bg-slate-50"
                               >
                                 Batal
                               </button>
                             </div>
                           ) : (
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.isi_komentar}</p>
+                            <p className="text-sm text-[#0E2F76]/90 whitespace-pre-wrap">{comment.isi_komentar}</p>
                           )}
                         </div>
                       </div>
@@ -870,13 +1001,13 @@ export default function KanbanBoard() {
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Tulis komentar..."
-                    className="flex-1 border border-gray-300 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    className="flex-1 border border-indigo-100 bg-white/80 shadow-sm p-3 rounded-xl text-sm focus:ring-2 focus:ring-[#0E2F76] outline-none transition"
                     disabled={isSubmittingComment}
                   />
                   <button
                     type="submit"
                     disabled={!newComment.trim() || isSubmittingComment}
-                    className="px-4 py-2.5 bg-blue-600 text-white font-medium text-sm rounded-lg hover:bg-blue-700 transition disabled:bg-blue-400 flex items-center justify-center min-w-[80px]"
+                    className="px-5 py-3 bg-[#0E2F76] text-white font-medium text-sm rounded-xl hover:bg-blue-900 shadow-md transition disabled:bg-indigo-300 flex items-center justify-center min-w-[90px]"
                   >
                     {isSubmittingComment ? (
                       <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -888,16 +1019,16 @@ export default function KanbanBoard() {
               </div>
 
               {/* Tombol Aksi */}
-              <div className="flex justify-end gap-3 mt-8 border-t pt-5">
+              <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => setIsDetailModalOpen(false)}
-                  className="px-5 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition"
+                  className="px-6 py-2.5 bg-white border border-slate-200 shadow-sm text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
                 >
                   Tutup
                 </button>
                 <button
                   onClick={() => handleMarkAsDone(selectedTask)}
-                  className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                  className="px-6 py-2.5 bg-[#0E2F76] shadow-md text-white font-medium rounded-xl hover:bg-blue-900 transition flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
@@ -913,17 +1044,14 @@ export default function KanbanBoard() {
       {/* Modal Form Tambah & Edit Tugas */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 sm:p-6">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="bg-gradient-to-br from-[#F5FEFF] to-[#E2EAF4] w-full max-w-3xl rounded-2xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1">
               {/* Header Modal */}
               <div className="mb-6">
-                <div className="bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-2xl font-bold text-[#0E2F76]">
                   {editingTask ? editingTask.judul_task : "Add Task"}
                 </h2>
-                <p className="text-gray-500 text-sm mt-1">
+                <p className="text-[#0E2F76]/60 text-sm mt-1">
                   {editingTask ? "Update the information below to modify the task" : "Fill in the form below to create a task"}
                 </p>
               </div>
@@ -933,37 +1061,37 @@ export default function KanbanBoard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                   {/* Kolom Kiri */}
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-5 h-full">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
+                      <label className="block text-sm font-semibold text-[#0E2F76] mb-2">Task Title</label>
                       <input
                         type="text"
                         placeholder="Judul Tugas..."
                         value={formData.judul_task}
                         required
-                        className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                        className="w-full border border-indigo-100 bg-white/80 shadow-sm p-3 rounded-xl text-sm focus:ring-2 focus:ring-[#0E2F76] outline-none transition"
                         onChange={(e) => setFormData({ ...formData, judul_task: e.target.value })}
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Task Description</label>
+                    <div className="flex-1 flex flex-col">
+                      <label className="block text-sm font-semibold text-[#0E2F76] mb-2">Task Description</label>
                       <textarea
                         placeholder="Give a description of the task..."
                         value={formData.deskripsi}
-                        className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none h-32 resize-none transition"
+                        className="w-full flex-1 border border-indigo-100 bg-white/80 shadow-sm p-3 rounded-xl text-sm focus:ring-2 focus:ring-[#0E2F76] outline-none resize-none transition"
                         onChange={(e) => setFormData({ ...formData, deskripsi: e.target.value })}
                       ></textarea>
                     </div>
                   </div>
 
                   {/* Kolom Kanan */}
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-5">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Penanggung Jawab</label>
+                      <label className="block text-sm font-semibold text-[#0E2F76] mb-2">Penanggung Jawab</label>
                       <select
                         required
                         value={formData.id_user}
-                        className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 transition bg-white"
+                        className="w-full border border-indigo-100 bg-white/80 shadow-sm p-3 rounded-xl text-sm focus:ring-2 focus:ring-[#0E2F76] outline-none transition"
                         onChange={(e) => setFormData({ ...formData, id_user: e.target.value })}
                       >
                         <option value="">Pilih Penanggung Jawab...</option>
@@ -971,11 +1099,11 @@ export default function KanbanBoard() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                      <label className="block text-sm font-semibold text-[#0E2F76] mb-2">Kategori</label>
                       <select
                         required
                         value={formData.id_kategori}
-                        className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 transition bg-white"
+                        className="w-full border border-indigo-100 bg-white/80 shadow-sm p-3 rounded-xl text-sm focus:ring-2 focus:ring-[#0E2F76] outline-none transition"
                         onChange={(e) => setFormData({ ...formData, id_kategori: e.target.value })}
                       >
                         <option value="">Pilih Kategori...</option>
@@ -983,12 +1111,12 @@ export default function KanbanBoard() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+                      <label className="block text-sm font-semibold text-[#0E2F76] mb-2">Deadline</label>
                       <input
                         type="date"
                         required
                         value={formData.deadline}
-                        className="w-full border border-gray-300 p-2.5 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition"
+                        className="w-full border border-indigo-100 bg-white/80 shadow-sm p-3 rounded-xl text-sm focus:ring-2 focus:ring-[#0E2F76] outline-none transition"
                         onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                       />
                     </div>
@@ -996,7 +1124,7 @@ export default function KanbanBoard() {
                 </div>
 
                 {/* Tombol Aksi */}
-                <div className="flex justify-end gap-3 mt-8 border-t pt-5">
+                <div className="flex justify-end gap-3 mt-8">
                   <button
                     type="button"
                     onClick={() => {
@@ -1005,13 +1133,13 @@ export default function KanbanBoard() {
                       setIsModalOpen(false);
                       setEditingTask(null);
                     }}
-                    className="px-5 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition"
+                    className="px-6 py-2.5 bg-white border border-slate-200 shadow-sm text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition"
                   >
                     Close
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+                    className="px-6 py-2.5 bg-[#0E2F76] shadow-md text-white font-medium rounded-xl hover:bg-blue-900 transition"
                   >
                     {editingTask ? "Save" : "Add Task"}
                   </button>

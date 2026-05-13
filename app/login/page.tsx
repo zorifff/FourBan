@@ -34,7 +34,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-300 font-sans text-black">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#F5FEFF] to-[#AAC0E1] font-sans text-black">
       <div className="w-full max-w-[448px] bg-white rounded-2xl shadow-xl px-[32px] py-[40px] relative">
         
         {/* Header Section */}
@@ -64,10 +64,10 @@ export default function LoginPage() {
             {/* Text */}
             <div className="flex flex-col mt-[3px]">
               <div className="flex items-center">
-                <span className="text-blue-500 text-3xl font-bold font-['Inter'] leading-8">Kanban</span>
-                <span className="text-blue-300 text-3xl font-bold font-['Inter'] leading-8">Board</span>
+                <span className="text-blue-500 text-3xl font-bold font-['Inter'] leading-8">Four</span>
+                <span className="text-blue-300 text-3xl font-bold font-['Inter'] leading-8">Ban</span>
               </div>
-              <div className="text-blue-200 text-[10px] font-medium font-['Inter'] leading-[10px] tracking-[0.08em] mt-[2px] ml-[12px]">
+              <div className="text-blue-200 text-[10px] font-medium font-['Inter'] leading-[10px] tracking-[0.08em] mt-[2px]">
                 ORGANIZE • FLOW • DELIVER
               </div>
             </div>

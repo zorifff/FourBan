@@ -7,7 +7,7 @@ import { Providers } from './Providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Kanban Board',
+  title: 'FourBan',
   description: 'Task Management App',
 }
 

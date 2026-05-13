@@ -56,62 +56,135 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 font-sans text-black">
-      <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100">
-        <div className="text-center mb-8">
-          <h2 className="text-4xl font-extrabold text-slate-900 mb-2">Create Account</h2>
-          <p className="text-slate-500">Sign up to start managing tasks</p>
-        </div>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#F5FEFF] to-[#AAC0E1] font-sans text-black py-4">
+      <div className="w-full max-w-[448px] bg-white rounded-2xl shadow-xl px-[32px] py-[32px] relative mx-4">
         
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm text-center font-medium border border-red-100">
-            {error}
+        {/* Header Section */}
+        <div className="flex flex-col items-center">
+          {/* Logo */}
+          <div className="flex items-center gap-[4px] mb-[16px]">
+            {/* Logo icon */}
+            <div className="relative w-12 h-12 flex-shrink-0">
+              <div className="w-2.5 h-9 absolute left-[5px] top-[6.66px] overflow-hidden">
+                <div className="w-2.5 h-2 absolute left-0 top-0 bg-blue-500" />
+                <div className="w-2.5 h-1.5 absolute left-0 top-[10px] bg-blue-500/80" />
+                <div className="w-2.5 h-2.5 absolute left-0 top-[18.33px] bg-blue-500/60" />
+                <div className="w-2.5 h-1.5 absolute left-0 top-[30px] bg-blue-500/40" />
+              </div>
+              <div className="w-2.5 h-9 absolute left-[20px] top-[6.66px] overflow-hidden">
+                <div className="w-2.5 h-3 absolute left-0 top-0 bg-blue-400" />
+                <div className="w-2.5 h-2 absolute left-0 top-[13.33px] bg-blue-400/70" />
+                <div className="w-2.5 h-3.5 absolute left-0 top-[23.33px] bg-blue-400/50" />
+              </div>
+              <div className="w-2.5 h-9 absolute left-[35px] top-[6.66px] overflow-hidden">
+                <div className="w-2.5 h-1.5 absolute left-0 top-0 bg-blue-300" />
+                <div className="w-2.5 h-2 absolute left-0 top-[8.33px] bg-blue-300/80" />
+                <div className="w-2.5 h-2 absolute left-0 top-[18.33px] bg-blue-300/60" />
+                <div className="w-2.5 h-2.5 absolute left-0 top-[27.50px] bg-blue-300/50" />
+              </div>
+            </div>
+            {/* Text */}
+            <div className="flex flex-col mt-[3px]">
+              <div className="flex items-center">
+                <span className="text-blue-500 text-3xl font-bold font-['Inter'] leading-8">Four</span>
+                <span className="text-blue-300 text-3xl font-bold font-['Inter'] leading-8">Ban</span>
+              </div>
+              <div className="text-blue-200 text-[10px] font-medium font-['Inter'] leading-[10px] tracking-[0.08em] mt-[2px]">
+                ORGANIZE • FLOW • DELIVER
+              </div>
+            </div>
           </div>
-        )}
 
-        <form onSubmit={handleSignUp} className="space-y-4">
-          <div>
-            <input 
-              type="text" placeholder="Nama Lengkap" required
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              onChange={(e) => setFormData({...formData, nama_lengkap: e.target.value})}
-            />
+          {/* Titles */}
+          <h2 className="text-neutral-950 text-[28px] font-medium font-['Inter'] leading-9 text-center">
+            Buat Akun Baru
+          </h2>
+          <p className="text-gray-500 text-base font-normal font-['Inter'] leading-6 mt-1 text-center">
+            Mulai kelola task Anda dengan lebih baik
+          </p>
+        </div>
+
+        {/* Form Section */}
+        <form onSubmit={handleSignUp} className="mt-6">
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-[10px] text-sm text-center font-medium border border-red-100 mb-3">
+              {error}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1 mb-4">
+            <label className="text-neutral-950 text-sm font-medium font-['Inter']">Nama Lengkap</label>
+            <div className="h-11 px-4 py-3 bg-zinc-100 rounded-[10px] border border-black/10 flex items-center overflow-hidden focus-within:border-[#0E2F76] focus-within:ring-1 focus-within:ring-[#0E2F76] transition-all">
+              <input 
+                type="text"
+                required
+                className="w-full bg-transparent outline-none text-neutral-950 text-sm font-normal font-['Inter'] placeholder:text-neutral-950/50"
+                placeholder="Masukkan nama lengkap"
+                value={formData.nama_lengkap}
+                onChange={(e) => setFormData({...formData, nama_lengkap: e.target.value})}
+              />
+            </div>
           </div>
-          <div>
-            <input 
-              type="text" placeholder="Username" required
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              onChange={(e) => setFormData({...formData, username: e.target.value})}
-            />
+
+          <div className="flex flex-col gap-1 mb-4">
+            <label className="text-neutral-950 text-sm font-medium font-['Inter']">Nama Pengguna</label>
+            <div className="h-11 px-4 py-3 bg-zinc-100 rounded-[10px] border border-black/10 flex items-center overflow-hidden focus-within:border-[#0E2F76] focus-within:ring-1 focus-within:ring-[#0E2F76] transition-all">
+              <input 
+                type="text"
+                required
+                className="w-full bg-transparent outline-none text-neutral-950 text-sm font-normal font-['Inter'] placeholder:text-neutral-950/50"
+                placeholder="Masukkan nama pengguna"
+                value={formData.username}
+                onChange={(e) => setFormData({...formData, username: e.target.value})}
+              />
+            </div>
           </div>
-          <div>
-            <input 
-              type="email" placeholder="Email (name@company.com)" required
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-            />
+
+          <div className="flex flex-col gap-1 mb-4">
+            <label className="text-neutral-950 text-sm font-medium font-['Inter']">Email</label>
+            <div className="h-11 px-4 py-3 bg-zinc-100 rounded-[10px] border border-black/10 flex items-center overflow-hidden focus-within:border-[#0E2F76] focus-within:ring-1 focus-within:ring-[#0E2F76] transition-all">
+              <input 
+                type="email"
+                required
+                className="w-full bg-transparent outline-none text-neutral-950 text-sm font-normal font-['Inter'] placeholder:text-neutral-950/50"
+                placeholder="nama@email.com"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+              />
+            </div>
           </div>
-          <div>
-            <input 
-              type="password" placeholder="Password" required
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-            />
+
+          <div className="flex flex-col gap-1 mb-6">
+            <label className="text-neutral-950 text-sm font-medium font-['Inter']">Password</label>
+            <div className="h-11 px-4 py-3 bg-zinc-100 rounded-[10px] border border-black/10 flex items-center overflow-hidden focus-within:border-[#0E2F76] focus-within:ring-1 focus-within:ring-[#0E2F76] transition-all">
+              <input 
+                type="password"
+                required
+                className="w-full bg-transparent outline-none text-neutral-950 text-sm font-normal font-['Inter'] placeholder:text-neutral-950/50"
+                placeholder="Masukkan password"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+              />
+            </div>
           </div>
+
           <button 
+            type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
+            className="w-full h-11 bg-[#0E2F76] hover:bg-blue-900 text-white rounded-[10px] flex justify-center items-center text-sm font-medium font-['Inter'] transition-colors disabled:opacity-50"
           >
-            {isLoading ? "Creating Account..." : "Sign Up"}
+            {isLoading ? "Memproses..." : "Daftar Sekarang"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
-          Already have an account?{" "}
-          <Link href="/login" className="text-blue-600 font-bold hover:underline">
-            Log In
+        {/* Footer */}
+        <div className="mt-5 flex justify-center items-center gap-1">
+          <span className="text-gray-500 text-sm font-normal font-['Inter']">Sudah punya akun?</span>
+          <Link href="/login" className="text-[#0E2F76] text-sm font-medium font-['Inter'] hover:underline">
+            Masuk di sini
           </Link>
-        </p>
+        </div>
+
       </div>
     </div>
   );
