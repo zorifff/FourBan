@@ -34,51 +34,107 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 font-sans text-black">
-      <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100">
-        <div className="text-center mb-8">
-          <h2 className="text-4xl font-extrabold text-slate-900 mb-2">Welcome Back</h2>
-          <p className="text-slate-500">Sign in to manage your tasks</p>
-        </div>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-300 font-sans text-black">
+      <div className="w-full max-w-[448px] bg-white rounded-2xl shadow-xl px-[32px] py-[40px] relative">
         
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm text-center font-medium border border-red-100">
-            {error}
+        {/* Header Section */}
+        <div className="flex flex-col items-center">
+          {/* Logo */}
+          <div className="flex items-center gap-[4px] mb-[24px]">
+            {/* Logo icon */}
+            <div className="relative w-12 h-12 flex-shrink-0">
+              <div className="w-2.5 h-9 absolute left-[5px] top-[6.66px] overflow-hidden">
+                <div className="w-2.5 h-2 absolute left-0 top-0 bg-blue-500" />
+                <div className="w-2.5 h-1.5 absolute left-0 top-[10px] bg-blue-500/80" />
+                <div className="w-2.5 h-2.5 absolute left-0 top-[18.33px] bg-blue-500/60" />
+                <div className="w-2.5 h-1.5 absolute left-0 top-[30px] bg-blue-500/40" />
+              </div>
+              <div className="w-2.5 h-9 absolute left-[20px] top-[6.66px] overflow-hidden">
+                <div className="w-2.5 h-3 absolute left-0 top-0 bg-blue-400" />
+                <div className="w-2.5 h-2 absolute left-0 top-[13.33px] bg-blue-400/70" />
+                <div className="w-2.5 h-3.5 absolute left-0 top-[23.33px] bg-blue-400/50" />
+              </div>
+              <div className="w-2.5 h-9 absolute left-[35px] top-[6.66px] overflow-hidden">
+                <div className="w-2.5 h-1.5 absolute left-0 top-0 bg-blue-300" />
+                <div className="w-2.5 h-2 absolute left-0 top-[8.33px] bg-blue-300/80" />
+                <div className="w-2.5 h-2 absolute left-0 top-[18.33px] bg-blue-300/60" />
+                <div className="w-2.5 h-2.5 absolute left-0 top-[27.50px] bg-blue-300/50" />
+              </div>
+            </div>
+            {/* Text */}
+            <div className="flex flex-col mt-[3px]">
+              <div className="flex items-center">
+                <span className="text-blue-500 text-3xl font-bold font-['Inter'] leading-8">Kanban</span>
+                <span className="text-blue-300 text-3xl font-bold font-['Inter'] leading-8">Board</span>
+              </div>
+              <div className="text-blue-200 text-[10px] font-medium font-['Inter'] leading-[10px] tracking-[0.08em] mt-[2px] ml-[12px]">
+                ORGANIZE • FLOW • DELIVER
+              </div>
+            </div>
           </div>
-        )}
 
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Email Address</label>
-            <input 
-              type="email" placeholder="name@company.com" required
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              onChange={(e) => setEmail(e.target.value)}
-            />
+          {/* Titles */}
+          <h2 className="text-neutral-950 text-[28px] font-medium font-['Inter'] leading-9 text-center">
+            Selamat Datang Kembali
+          </h2>
+          <p className="text-gray-500 text-base font-normal font-['Inter'] leading-6 mt-2 text-center">
+            Masuk untuk melanjutkan ke dashboard Anda
+          </p>
+        </div>
+
+        {/* Form Section */}
+        <form onSubmit={handleLogin} className="mt-10">
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm text-center font-medium border border-red-100 mb-4">
+              {error}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2 mb-6">
+            <label className="text-neutral-950 text-base font-medium font-['Inter'] leading-6">Email</label>
+            <div className="h-12 px-4 py-3 bg-zinc-100 rounded-[10px] border border-black/10 flex items-center overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+              <input 
+                type="email"
+                required
+                className="w-full bg-transparent outline-none text-neutral-950 text-base font-normal font-['Inter'] placeholder:text-neutral-950/50"
+                placeholder="nama@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
-            <input 
-              type="password" placeholder="••••••••" required
-              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              onChange={(e) => setPassword(e.target.value)}
-            />
+
+          <div className="flex flex-col gap-2 mb-10">
+            <label className="text-neutral-950 text-base font-medium font-['Inter'] leading-6">Password</label>
+            <div className="h-12 px-4 py-3 bg-zinc-100 rounded-[10px] border border-black/10 flex items-center overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+              <input 
+                type="password"
+                required
+                className="w-full bg-transparent outline-none text-neutral-950 text-base font-normal font-['Inter'] placeholder:text-neutral-950/50"
+                placeholder="Masukkan password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
           </div>
+
           <button 
+            type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+            className="w-full h-12 bg-blue-900 hover:bg-blue-800 text-white rounded-[10px] flex justify-center items-center text-base font-medium font-['Inter'] leading-6 transition-colors disabled:opacity-50"
           >
-            {isLoading ? "Signing In..." : "Log In"}
+            {isLoading ? "Memproses..." : "Masuk"}
           </button>
         </form>
 
-        {/* Tambahkan bagian ini di bawah tag form */}
-        <p className="mt-6 text-center text-sm text-slate-500">
-          Don't have an account?{" "}
-          <Link href="/signup" className="text-blue-600 font-bold hover:underline">
-            Sign Up
+        {/* Footer */}
+        <div className="mt-6 flex justify-center items-center gap-1">
+          <span className="text-gray-500 text-base font-normal font-['Inter'] leading-6">Belum punya akun?</span>
+          <Link href="/signup" className="text-blue-900 text-base font-medium font-['Inter'] leading-6 hover:underline">
+            Daftar sekarang
           </Link>
-        </p>
+        </div>
+
       </div>
     </div>
   );

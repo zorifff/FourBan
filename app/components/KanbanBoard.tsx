@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { useSession, signOut } from "next-auth/react";
+import DeadlineBadge from "./DeadlineBadge";
 
 // 1. Definisi Tipe Data (Sesuai SRS)
 type Task = {
@@ -60,6 +61,8 @@ export default function KanbanBoard() {
   const [editCommentText, setEditCommentText] = useState("");
   const { data: session } = useSession();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [sortOption, setSortOption] = useState<string>("A-Z");
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
   // --- HELPER FUNCTION ---
   const getInitials = (name: string) => {
@@ -133,6 +136,54 @@ export default function KanbanBoard() {
     fetchData();
   }, []);
 
+  // --- SORTING LOGIC ---
+  const handleSort = (option: string) => {
+    setSortOption(option);
+    setIsSortMenuOpen(false);
+
+    const newData = { ...data };
+    
+    const sortTasks = (taskIds: string[], sortType: string) => {
+      return taskIds.slice().sort((aId, bId) => {
+        const taskA = newData.tasks[aId];
+        const taskB = newData.tasks[bId];
+        
+        if (sortType === "A-Z") {
+          return taskA.judul_task.localeCompare(taskB.judul_task);
+        } else if (sortType === "Z-A") {
+          return taskB.judul_task.localeCompare(taskA.judul_task);
+        } else if (sortType === "Kategori (Low - High)") {
+          const priority = { "low": 1, "medium": 2, "high": 3 } as Record<string, number>;
+          const pA = priority[taskA.kategori.toLowerCase()] || 0;
+          const pB = priority[taskB.kategori.toLowerCase()] || 0;
+          return pA - pB;
+        } else if (sortType === "Kategori (High - Low)") {
+          const priority = { "low": 1, "medium": 2, "high": 3 } as Record<string, number>;
+          const pA = priority[taskA.kategori.toLowerCase()] || 0;
+          const pB = priority[taskB.kategori.toLowerCase()] || 0;
+          return pB - pA;
+        } else if (sortType === "Deadline (Terdekat)") {
+          if (!taskA.deadline && !taskB.deadline) return 0;
+          if (!taskA.deadline) return 1;
+          if (!taskB.deadline) return -1;
+          return new Date(taskA.deadline).getTime() - new Date(taskB.deadline).getTime();
+        } else if (sortType === "Deadline (Terjauh)") {
+          if (!taskA.deadline && !taskB.deadline) return 0;
+          if (!taskA.deadline) return 1;
+          if (!taskB.deadline) return -1;
+          return new Date(taskB.deadline).getTime() - new Date(taskA.deadline).getTime();
+        }
+        return 0;
+      });
+    };
+
+    newData.columnOrder.forEach(colId => {
+      newData.columns[colId].taskIds = sortTasks(newData.columns[colId].taskIds, option);
+    });
+
+    setData(newData);
+  };
+
   // --- HANDLER UNTUK MEMBUKA DETAIL TASK ---
   const handleTaskClick = async (task: any) => {
     setSelectedTask(task);
@@ -168,6 +219,56 @@ export default function KanbanBoard() {
     setIsDetailModalOpen(false);
     setIsModalOpen(true);
     setOpenMenuTaskId(null);
+  };
+
+  // --- HANDLER UNTUK MARK TASK AS DONE ---
+  const handleMarkAsDone = async (task: any) => {
+    // Cari lokasi task saat ini
+    let sourceColumnId = "TODO";
+    for (const colId of data.columnOrder) {
+      if (data.columns[colId].taskIds.includes(task.id)) {
+        sourceColumnId = colId;
+        break;
+      }
+    }
+
+    if (sourceColumnId === "DONE") {
+      setIsDetailModalOpen(false);
+      return; // Sudah selesai
+    }
+
+    // Optimistic UI Update
+    const startColumn = data.columns[sourceColumnId];
+    const finishColumn = data.columns["DONE"];
+
+    const startTaskIds = Array.from(startColumn.taskIds);
+    startTaskIds.splice(startTaskIds.indexOf(task.id), 1);
+    const finishTaskIds = Array.from(finishColumn.taskIds);
+    finishTaskIds.push(task.id); // Taruh di akhir kolom DONE
+
+    setData({
+      ...data,
+      columns: {
+        ...data.columns,
+        [startColumn.id]: { ...startColumn, taskIds: startTaskIds },
+        [finishColumn.id]: { ...finishColumn, taskIds: finishTaskIds },
+      },
+    });
+
+    setIsDetailModalOpen(false);
+
+    // Update ke Database
+    try {
+      await fetch('/api/tasks', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id_task: task.dbId, status: "DONE" }),
+      });
+    } catch (error) {
+      console.error("Gagal update status:", error);
+    }
   };
 
   // --- LOGIKA DRAG AND DROP (UPDATE STATUS) ---
@@ -427,10 +528,31 @@ export default function KanbanBoard() {
         </div>
 
         <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-2 text-gray-500 text-sm font-medium">
+          {/* SORT MENU */}
+          <div className="relative hidden md:flex items-center gap-2 text-gray-500 text-sm font-medium z-30">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
             <span>Sort</span>
-            <span className="text-gray-900 font-bold cursor-pointer">A-Z ↓</span>
+            <span 
+              className="text-gray-900 font-bold cursor-pointer flex items-center gap-1"
+              onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+            >
+              {sortOption} <span className="text-xs">↓</span>
+            </span>
+
+            {/* Dropdown Sort */}
+            {isSortMenuOpen && (
+              <div className="absolute top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
+                {["A-Z", "Z-A", "Kategori (Low - High)", "Kategori (High - Low)", "Deadline (Terdekat)", "Deadline (Terjauh)"].map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => handleSort(opt)}
+                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors ${sortOption === opt ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-700'}`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <button
@@ -575,7 +697,7 @@ export default function KanbanBoard() {
                                   <div className="w-8 h-8 rounded-full bg-blue-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0" title={task.nama_user}>
                                     {getInitials(task.nama_user || "U")}
                                   </div>
-                                  <span className="text-xs text-gray-500 font-medium">{formatDeadline(task.deadline)}</span>
+                                  <DeadlineBadge date={task.deadline} />
                                 </div>
                               </div>
                             )}
@@ -648,8 +770,8 @@ export default function KanbanBoard() {
                   {/* Deadline */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">Deadline</label>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-sm font-medium text-gray-700">{formatDeadline(selectedTask.deadline)}</p>
+                    <div className="bg-gray-50 p-2.5 rounded-lg flex items-center">
+                      <DeadlineBadge date={selectedTask.deadline} />
                     </div>
                   </div>
                 </div>
@@ -774,13 +896,13 @@ export default function KanbanBoard() {
                   Tutup
                 </button>
                 <button
-                  onClick={() => handleEditFromMenu(selectedTask)}
+                  onClick={() => handleMarkAsDone(selectedTask)}
                   className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  Edit Task
+                  Done
                 </button>
               </div>
             </div>
