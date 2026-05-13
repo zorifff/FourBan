@@ -10,6 +10,7 @@ export default withAuth({
 export const config = { 
   matcher: [
     "/", 
+    "/admin",
     "/api/tasks/:path*"
   ] 
 };

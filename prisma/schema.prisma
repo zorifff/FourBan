@@ -15,6 +15,7 @@ model tb_users {
   email        String        @db.VarChar(100) @unique
   tasks        tb_tasks[]    // Relasi 1-to-many ke tb_tasks
   comments     tb_comments[] // Relasi 1-to-many ke tb_comments
+  role String @default("user")
 }
 
 // Tabel untuk kategori atau label warna [cite: 162]
