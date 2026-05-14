@@ -35,10 +35,13 @@ const initialBoardData: BoardData = {
   columnOrder: ["TODO", "DOING", "DONE"],
 };
 
-export default function KanbanBoard() {
+export default function KanbanBoard({ projectId }: { projectId?: number }) {
   // --- STATE ---
   const [data, setData] = useState<BoardData>(initialBoardData);
   const [isLoading, setIsLoading] = useState(true);
+  const [projectRole, setProjectRole] = useState("admin"); // Default admin if no project
+  const [projectTitle, setProjectTitle] = useState("");
+  const [projectDesc, setProjectDesc] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
@@ -89,7 +92,7 @@ export default function KanbanBoard() {
     const fetchData = async () => {
       try {
         const [resTasks, resUsers, resCats] = await Promise.all([
-          fetch('/api/tasks'),
+          fetch(`/api/tasks${projectId ? '?projectId=' + projectId : ''}`),
           fetch('/api/users'),
           fetch('/api/categories')
         ]);
@@ -97,6 +100,24 @@ export default function KanbanBoard() {
         const dbTasks = await resTasks.json();
         const dbUsers = await resUsers.json();
         const dbCats = await resCats.json();
+
+        let userRole = "admin";
+        let projTitle = "";
+        let projDesc = "";
+
+        if (projectId) {
+          const resProj = await fetch(`/api/projects/${projectId}`);
+          if (resProj.ok) {
+            const projData = await resProj.json();
+            userRole = projData.currentUserRole || "member";
+            projTitle = projData.nama_project || "";
+            projDesc = projData.deskripsi || "";
+          }
+        }
+
+        setProjectRole(userRole);
+        setProjectTitle(projTitle);
+        setProjectDesc(projDesc);
 
         setUsers(dbUsers);
         setCategories(dbCats);
@@ -277,6 +298,8 @@ export default function KanbanBoard() {
 
   // --- LOGIKA DRAG AND DROP (UPDATE STATUS) ---
   const onDragEnd = async (result: DropResult) => {
+    if (projectRole !== "admin") return; // Members cannot drag and drop
+    
     const { destination, source, draggableId } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
@@ -476,10 +499,11 @@ export default function KanbanBoard() {
         });
       } else {
         // CREATE: Gunakan POST untuk task baru
+        const postData = projectId ? { ...formData, id_project: projectId } : formData;
         response = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(postData),
         });
         responseData = await response.json();
 
@@ -614,15 +638,28 @@ export default function KanbanBoard() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col px-6 pt-8 pb-12 gap-6 max-w-[1200px] w-full mx-auto overflow-x-hidden">
+      <div className="flex-1 flex flex-col px-6 pt-6 pb-12 gap-6 max-w-[1200px] w-full mx-auto overflow-x-hidden">
+        {/* Back Button */}
+        <div>
+          <button 
+            onClick={() => window.location.href = '/dashboard'}
+            className="flex items-center gap-2 text-slate-500 hover:text-[#0E2F76] font-medium transition-colors text-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+            Kembali ke Dashboard
+          </button>
+        </div>
+
         {/* Banner */}
         <div className="w-full sm:h-44 bg-gradient-to-br from-[#F5FEFF] to-[#AAC0E1] rounded-2xl shadow-sm border border-blue-100 p-8 flex flex-col sm:flex-row justify-between items-center gap-6 sm:gap-0 relative overflow-hidden">
           <div className="flex flex-col gap-2 relative z-10 w-full sm:w-2/3">
             <h1 className="text-blue-900 text-[28px] sm:text-4xl font-bold font-['Inter'] leading-10">
-              Selamat Datang, {session?.user?.name?.split(' ')[0] || "User"}!
+              {projectTitle ? projectTitle : `Selamat Datang, ${session?.user?.name?.split(' ')[0] || "User"}!`}
             </h1>
             <p className="text-slate-600 text-base sm:text-lg font-normal font-['Inter'] leading-7">
-              Mari kelola dan selesaikan pekerjaan Anda hari ini dengan lebih produktif
+              {projectDesc ? projectDesc : "Mari kelola dan selesaikan pekerjaan Anda hari ini dengan lebih produktif"}
             </p>
           </div>
           <div className="bg-white rounded-2xl shadow-md border border-blue-200 w-28 h-28 flex flex-col justify-center items-center relative z-10 flex-shrink-0">
@@ -723,19 +760,21 @@ export default function KanbanBoard() {
                       </div>
                     </div>
                     
-                    <button 
-                      className={`w-5 h-5 flex justify-center items-center ${plusIconColor} hover:scale-110 transition-transform`}
-                      onClick={() => {
-                        setEditingTask(null);
-                        setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
-                        setIsModalOpen(true);
-                      }}
-                      title="Tambah Task Baru"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.67" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path>
-                      </svg>
-                    </button>
+                    {projectRole === "admin" && (
+                      <button 
+                        className={`w-5 h-5 flex justify-center items-center ${plusIconColor} hover:scale-110 transition-transform`}
+                        onClick={() => {
+                          setEditingTask(null);
+                          setFormData({ judul_task: "", deskripsi: "", id_user: "", id_kategori: "", deadline: "" });
+                          setIsModalOpen(true);
+                        }}
+                        title="Tambah Task Baru"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.67" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                      </button>
+                    )}
                   </div>
 
                   <Droppable droppableId={column.id}>
@@ -787,24 +826,26 @@ export default function KanbanBoard() {
                                     <div className="text-neutral-950 text-[15px] font-semibold font-['Inter'] leading-5 pr-12 line-clamp-1">{task.judul_task || "No Title"}</div>
                                     
                                     {/* Action Icons (Edit & Delete) */}
-                                    <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <button 
-                                        onClick={(e) => { e.stopPropagation(); handleEditFromMenu(task); }} 
-                                        className="text-blue-600 hover:text-blue-800 bg-blue-50 p-1.5 rounded-sm"
-                                      >
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                        </svg>
-                                      </button>
-                                      <button 
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id, task.dbId); }} 
-                                        className="text-red-600 hover:text-red-800 bg-red-50 p-1.5 rounded-sm"
-                                      >
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                      </button>
-                                    </div>
+                                    {projectRole === "admin" && (
+                                      <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); handleEditFromMenu(task); }} 
+                                          className="text-blue-600 hover:text-blue-800 bg-blue-50 p-1.5 rounded-sm"
+                                        >
+                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                          </svg>
+                                        </button>
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id, task.dbId); }} 
+                                          className="text-red-600 hover:text-red-800 bg-red-50 p-1.5 rounded-sm"
+                                        >
+                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                          </svg>
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                   
                                   {/* Description */}

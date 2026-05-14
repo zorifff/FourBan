@@ -13,9 +13,15 @@ model tb_users {
   username     String     @db.VarChar(50) @unique
   password     String     @db.VarChar(255)
   email        String        @db.VarChar(100) @unique
+  role         String     @default("user")
+
   tasks        tb_tasks[]    // Relasi 1-to-many ke tb_tasks
   comments     tb_comments[] // Relasi 1-to-many ke tb_comments
-  role String @default("user")
+  
+  projects_created tb_projects[] @relation("ProjectCreator")
+  project_members  tb_project_members[]
+  invitations_sent tb_invitations[] @relation("InviterRel")
+  invitations_recv tb_invitations[] @relation("InviteeRel")
 }
 
 // Tabel untuk kategori atau label warna [cite: 162]
@@ -37,6 +43,7 @@ model tb_tasks {
   id_task     Int           @id @default(autoincrement())
   id_user     Int           // Foreign key ke tb_users [cite: 160]
   id_kategori Int           // Foreign key ke tb_categories [cite: 160]
+  id_project  Int?          // Optional for backward compatibility
   judul_task  String        @db.VarChar(150)
   deskripsi   String        @db.Text
   status      StatusTask    @default(TODO) // Nilai enum status pengerjaan [cite: 160]
@@ -46,6 +53,7 @@ model tb_tasks {
   // Definisi Relasi
   user        tb_users      @relation(fields: [id_user], references: [id_user])
   kategori    tb_categories @relation(fields: [id_kategori], references: [id_kategori])
+  project     tb_projects?  @relation(fields: [id_project], references: [id_project], onDelete: Cascade)
   comments    tb_comments[] // Relasi 1-to-many ke tb_comments
 }
 
@@ -59,4 +67,44 @@ model tb_comments {
 
   task         tb_tasks @relation(fields: [id_task], references: [id_task], onDelete: Cascade)
   user         tb_users @relation(fields: [id_user], references: [id_user])
+}
+
+model tb_projects {
+  id_project  Int      @id @default(autoincrement())
+  nama_project String  @db.VarChar(150)
+  deskripsi    String  @db.Text
+  deadline     DateTime? @db.Date
+  created_at   DateTime @default(now()) @db.Timestamp()
+  created_by   Int
+
+  creator      tb_users @relation("ProjectCreator", fields: [created_by], references: [id_user])
+  members      tb_project_members[]
+  tasks        tb_tasks[]
+  invitations  tb_invitations[]
+}
+
+model tb_project_members {
+  id_member   Int      @id @default(autoincrement())
+  id_project  Int
+  id_user     Int
+  role        String   @default("member") // "admin" or "member"
+  joined_at   DateTime @default(now()) @db.Timestamp()
+
+  project     tb_projects @relation(fields: [id_project], references: [id_project], onDelete: Cascade)
+  user        tb_users    @relation(fields: [id_user], references: [id_user], onDelete: Cascade)
+
+  @@unique([id_project, id_user])
+}
+
+model tb_invitations {
+  id_invitation Int      @id @default(autoincrement())
+  id_project    Int
+  id_inviter    Int
+  id_invitee    Int
+  status        String   @default("pending") // pending, accepted, rejected
+  created_at    DateTime @default(now()) @db.Timestamp()
+
+  project       tb_projects @relation(fields: [id_project], references: [id_project], onDelete: Cascade)
+  inviter       tb_users    @relation("InviterRel", fields: [id_inviter], references: [id_user], onDelete: Cascade)
+  invitee       tb_users    @relation("InviteeRel", fields: [id_invitee], references: [id_user], onDelete: Cascade)
 }

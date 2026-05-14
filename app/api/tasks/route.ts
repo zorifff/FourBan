@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: Request) {
   try {
-    // Mengambil semua data dari tb_tasks
-    // Kita gunakan 'include' agar nama kategori dan nama user ikut terbawa
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get("projectId");
+
     const tasks = await prisma.tb_tasks.findMany({
+      where: projectId ? { id_project: Number(projectId) } : {},
       include: {
         kategori: true,
         user: true,
@@ -60,7 +64,7 @@ export async function PUT(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id_user, id_kategori, judul_task, deskripsi, deadline } = body;
+    const { id_user, id_kategori, id_project, judul_task, deskripsi, deadline } = body;
 
     // Validasi sederhana
     if (!id_user || !id_kategori || !judul_task) {
@@ -74,6 +78,7 @@ export async function POST(request: Request) {
       data: {
         id_user: Number(id_user),
         id_kategori: Number(id_kategori),
+        id_project: id_project ? Number(id_project) : null,
         judul_task: judul_task,
         deskripsi: deskripsi || "",
         status: "TODO", // Tugas baru otomatis masuk ke To-Do

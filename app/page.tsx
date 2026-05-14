@@ -1,9 +1,5 @@
-import KanbanBoard from "./components/KanbanBoard";
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return (
-    <main>
-      <KanbanBoard />
-    </main>
-  );
+  redirect('/dashboard');
 }

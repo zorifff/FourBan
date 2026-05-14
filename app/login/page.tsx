@@ -28,7 +28,7 @@ export default function LoginPage() {
       setError(result.error);
       setIsLoading(false);
     } else {
-      router.push("/"); // Kembali ke Kanban Board jika sukses
+      router.push("/dashboard"); // Masuk ke Dashboard jika sukses
       router.refresh();
     }
   };
