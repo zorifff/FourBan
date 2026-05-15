@@ -37,41 +37,6 @@ export async function GET(request: Request) {
       }
     });
 
-    if (projects.length === 0) {
-      // Seed default projects as requested by user
-      const p1 = await prisma.tb_projects.create({
-        data: {
-          nama_project: "Web Recipeat",
-          deskripsi: "Proyek pengembangan aplikasi Web Recipeat",
-          created_by: userId,
-          members: {
-            create: { id_user: userId, role: "admin" }
-          }
-        }
-      });
-      // Assign existing tasks to this project
-      await prisma.tb_tasks.updateMany({
-        where: { id_project: null },
-        data: { id_project: p1.id_project }
-      });
-
-      const p2 = await prisma.tb_projects.create({
-        data: {
-          nama_project: "Tugas Akhir IoT",
-          deskripsi: "Proyek sistem IoT untuk tugas akhir",
-          created_by: userId,
-          members: {
-            create: { id_user: userId, role: "member" }
-          }
-        }
-      });
-
-      projects = [p1, p2].map(p => ({
-        ...p,
-        members: [{ id_user: userId, role: p.nama_project === "Web Recipeat" ? "admin" : "member" }]
-      })) as any;
-    }
-
     return NextResponse.json(projects);
   } catch (error) {
     console.error("Error fetching projects:", error);

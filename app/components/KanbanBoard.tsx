@@ -91,19 +91,18 @@ export default function KanbanBoard({ projectId }: { projectId?: number }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [resTasks, resUsers, resCats] = await Promise.all([
+        const [resTasks, resCats] = await Promise.all([
           fetch(`/api/tasks${projectId ? '?projectId=' + projectId : ''}`),
-          fetch('/api/users'),
           fetch('/api/categories')
         ]);
 
         const dbTasks = await resTasks.json();
-        const dbUsers = await resUsers.json();
         const dbCats = await resCats.json();
 
         let userRole = "admin";
         let projTitle = "";
         let projDesc = "";
+        let dbUsers: any[] = [];
 
         if (projectId) {
           const resProj = await fetch(`/api/projects/${projectId}`);
@@ -112,7 +111,18 @@ export default function KanbanBoard({ projectId }: { projectId?: number }) {
             userRole = projData.currentUserRole || "member";
             projTitle = projData.nama_project || "";
             projDesc = projData.deskripsi || "";
+            // Extract user data from project members
+            dbUsers = (projData.members || []).map((m: any) => ({
+              id_user: m.user.id_user,
+              nama_lengkap: m.user.nama_lengkap,
+              email: m.user.email,
+              username: m.user.username
+            }));
           }
+        } else {
+          // Fallback: fetch all users if not in a project context
+          const resUsers = await fetch('/api/users');
+          dbUsers = await resUsers.json();
         }
 
         setProjectRole(userRole);

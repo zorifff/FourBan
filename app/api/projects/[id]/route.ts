@@ -17,7 +17,18 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const project = await prisma.tb_projects.findUnique({
       where: { id_project: projectId },
       include: {
-        members: true
+        members: {
+          include: {
+            user: {
+              select: {
+                id_user: true,
+                nama_lengkap: true,
+                email: true,
+                username: true
+              }
+            }
+          }
+        }
       }
     });
 
