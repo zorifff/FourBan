@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 type Task = {
@@ -24,10 +25,14 @@ type User = {
 };
 
 export default function AdminPage() {
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("projectId");
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [projectTitle, setProjectTitle] = useState("");
 
   const [sortOption, setSortOption] = useState("default");
   const [filterUser, setFilterUser] = useState("all");
@@ -45,17 +50,35 @@ export default function AdminPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [resTasks, resUsers, resCats] = await Promise.all([
-          fetch("/api/tasks"),
-          fetch("/api/users"),
+        // Fetch tasks (filtered by project if projectId exists)
+        const tasksUrl = projectId ? `/api/tasks?projectId=${projectId}` : "/api/tasks";
+        const [resTasks, resCats] = await Promise.all([
+          fetch(tasksUrl),
           fetch("/api/categories")
         ]);
         const dbTasks = await resTasks.json();
-        const dbUsers = await resUsers.json();
         const dbCats = await resCats.json();
         setTasks(dbTasks);
-        setUsers(dbUsers);
         setCategories(dbCats);
+
+        // Fetch users: only project members if projectId, otherwise all users
+        if (projectId) {
+          const resProject = await fetch(`/api/projects/${projectId}`);
+          if (resProject.ok) {
+            const projData = await resProject.json();
+            setProjectTitle(projData.nama_project || "");
+            const projectMembers = (projData.members || []).map((m: any) => ({
+              id_user: m.user.id_user,
+              nama_lengkap: m.user.nama_lengkap,
+              email: m.user.email,
+            }));
+            setUsers(projectMembers);
+          }
+        } else {
+          const resUsers = await fetch("/api/users");
+          const dbUsers = await resUsers.json();
+          setUsers(dbUsers);
+        }
       } catch (error) {
         console.error("Gagal mengambil data:", error);
       } finally {
@@ -63,7 +86,7 @@ export default function AdminPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [projectId]);
 
   const formatDeadline = (dateString: string) => {
     if (!dateString) return "-";
@@ -189,7 +212,7 @@ export default function AdminPage() {
           </Link>
         </div>
 
-        <Link href="/">
+        <Link href={projectId ? `/board/${projectId}` : "/"}>
           <button className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -203,8 +226,8 @@ export default function AdminPage() {
       <div className="flex-1 p-6 md:p-8 max-w-[1200px] w-full mx-auto">
         <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-['Inter']">Semua Tugas</h1>
-            <p className="text-sm text-slate-500">Monitor dan kelola seluruh tugas yang ada di FourBan.</p>
+            <h1 className="text-2xl font-bold text-slate-900 font-['Inter']">{projectTitle ? `Tugas - ${projectTitle}` : "Semua Tugas"}</h1>
+            <p className="text-sm text-slate-500">{projectTitle ? `Monitor dan kelola tugas dalam proyek ${projectTitle}.` : "Monitor dan kelola seluruh tugas yang ada di FourBan."}</p>
           </div>
 
           {/* Toolbar */}
