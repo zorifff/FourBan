@@ -155,7 +155,7 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-800 font-sans">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#F5FEFF] to-[#E2EAF4] text-slate-800 font-sans">
       {/* Navbar */}
       <div className="w-full h-16 sm:h-20 bg-white shadow-sm border-b border-slate-200 px-8 flex justify-between items-center flex-shrink-0 z-50 relative">
         <div className="flex items-center gap-2 mt-2 cursor-pointer" onClick={() => router.push('/')}>
